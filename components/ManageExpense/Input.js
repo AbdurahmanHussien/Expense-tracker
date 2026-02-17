@@ -1,23 +1,35 @@
 import { TextInput, View, Text, StyleSheet } from "react-native";
 import { useTheme } from "../../store/theme-context";
 
-function Input({ label, style, textInputConfig, multiline, isInvalid }) {
+function Input({
+  label,
+  style,
+  inputStyle,
+  textInputConfig,
+  multiline,
+  isInvalid,
+  errorMessage,
+}) {
   const { theme } = useTheme();
   const colors = theme.colors;
   const styles = getStyles(colors);
 
   return (
     <View style={[styles.inputContainer, style]}>
-      <Text style={styles.label}>{label}</Text>
+      {label && <Text style={styles.label}>{label}</Text>}
       <TextInput
         {...textInputConfig}
         style={[
           styles.input,
           multiline && styles.inputMultiline,
           isInvalid && styles.inputInvalid,
+          inputStyle,
         ]}
         placeholderTextColor={colors.gray500}
       />
+      {isInvalid && errorMessage && (
+        <Text style={styles.errorText}>{errorMessage}</Text>
+      )}
     </View>
   );
 }
@@ -28,7 +40,7 @@ const getStyles = (colors) =>
   StyleSheet.create({
     inputContainer: {
       marginHorizontal: 4,
-      marginVertical: 12,
+      marginVertical: 10,
     },
     label: {
       fontSize: 13,
@@ -48,14 +60,18 @@ const getStyles = (colors) =>
       borderColor: colors.border,
     },
     inputMultiline: {
-      minHeight: 100,
+      minHeight: 80,
       textAlignVertical: "top",
-    },
-    inputContainerInvalid: {
-      backgroundColor: colors.error50,
     },
     inputInvalid: {
       backgroundColor: colors.error50,
       borderColor: colors.error500,
+    },
+    errorText: {
+      color: colors.error500,
+      fontSize: 12,
+      fontWeight: "500",
+      marginTop: 6,
+      marginLeft: 2,
     },
   });

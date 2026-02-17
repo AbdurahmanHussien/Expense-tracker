@@ -9,7 +9,12 @@ import { useTheme } from "../../store/theme-context";
 import { getFormattedDate } from "../../utils/date";
 import { AppContext } from "../../store/app-context";
 
-function TransactionForm({ submitButtonLabel, onSubmit, onCancel, defaultValues }) {
+function TransactionForm({
+  submitButtonLabel,
+  onSubmit,
+  onCancel,
+  defaultValues,
+}) {
   const { accounts } = useContext(AppContext);
   const { theme } = useTheme();
   const colors = theme.colors;
@@ -18,19 +23,19 @@ function TransactionForm({ submitButtonLabel, onSubmit, onCancel, defaultValues 
     {
       value: "expense",
       label: "Expense",
-      icon: "arrow-up",
+      icon: "arrow-up-circle",
       color: colors.error500,
     },
     {
       value: "income",
       label: "Income",
-      icon: "arrow-down",
+      icon: "arrow-down-circle",
       color: colors.success500,
     },
     {
       value: "transfer",
       label: "Transfer",
-      icon: "swap-horizontal",
+      icon: "swap-horizontal-outline",
       color: colors.transfer500,
     },
   ];
@@ -41,7 +46,8 @@ function TransactionForm({ submitButtonLabel, onSubmit, onCancel, defaultValues 
       isValid: true,
     },
     amount: {
-      value: defaultValues?.amount != null ? defaultValues.amount.toString() : "",
+      value:
+        defaultValues?.amount != null ? defaultValues.amount.toString() : "",
       isValid: true,
     },
     date: {
@@ -130,145 +136,157 @@ function TransactionForm({ submitButtonLabel, onSubmit, onCancel, defaultValues 
     label: acc.name,
   }));
 
+  const selectedType = TYPES.find((t) => t.value === inputs.type.value);
   const styles = getStyles(colors);
 
   return (
     <View style={styles.form}>
-      <Text style={styles.title}>
-        {defaultValues?.id ? "Edit" : "New"} Transaction
-      </Text>
-
+      {/* ── Type Selector ── */}
       <View style={styles.typeSelector}>
-        {TYPES.map((type) => (
-          <Pressable
-            key={type.value}
-            onPress={() => typeChangeHandler(type.value)}
-            style={[
-              styles.typeButton,
-              inputs.type.value === type.value && {
-                backgroundColor: type.color,
-                borderColor: type.color,
-              },
-            ]}
-          >
-            <Ionicons
-              name={type.icon}
-              size={18}
-              color={
-                inputs.type.value === type.value
-                  ? "white"
-                  : colors.gray500
-              }
-            />
-            <Text
+        {TYPES.map((type) => {
+          const isActive = inputs.type.value === type.value;
+          return (
+            <Pressable
+              key={type.value}
+              onPress={() => typeChangeHandler(type.value)}
               style={[
-                styles.typeButtonText,
-                inputs.type.value === type.value && styles.typeButtonTextActive,
+                styles.typeButton,
+                isActive && {
+                  backgroundColor: type.color,
+                  borderColor: type.color,
+                },
               ]}
             >
-              {type.label}
-            </Text>
-          </Pressable>
-        ))}
+              <Ionicons
+                name={type.icon}
+                size={20}
+                color={isActive ? "white" : colors.gray500}
+              />
+              <Text
+                style={[
+                  styles.typeButtonText,
+                  isActive && styles.typeButtonTextActive,
+                ]}
+              >
+                {type.label}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
-      <View style={styles.inputsRow}>
+      {/* ── Amount Card ── */}
+      <View style={styles.amountCard}>
+        <Text style={styles.amountLabel}>Amount</Text>
+        <View style={styles.amountRow}>
+          <Input
+            textInputConfig={{
+              keyboardType: "decimal-pad",
+              onChangeText: inputChangeHandler.bind(this, "amount"),
+              value: inputs.amount.value,
+              placeholder: "0.00",
+              placeholderTextColor: colors.gray500,
+            }}
+            style={styles.amountInput}
+            inputStyle={styles.amountInputField}
+            isInvalid={!inputs.amount.isValid}
+            errorMessage="Enter a valid amount"
+          />
+          <Text style={[styles.currencySymbol, { color: selectedType?.color }]}>
+            EGP
+          </Text>
+        </View>
+      </View>
+
+      {/* ── Details Section ── */}
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>Details</Text>
+
         <Input
-          label="Amount"
+          label="Description"
           textInputConfig={{
-            keyboardType: "decimal-pad",
-            onChangeText: inputChangeHandler.bind(this, "amount"),
-            value: inputs.amount.value,
+            multiline: true,
+            onChangeText: inputChangeHandler.bind(this, "description"),
+            value: inputs.description.value,
+            placeholder: "What was this for?",
           }}
-          style={styles.rowInput}
-          isInvalid={!inputs.amount.isValid}
+          multiline={true}
+          isInvalid={!inputs.description.isValid}
+          errorMessage="Please enter a description"
         />
+
         <DatePickerInput
           label="Date"
           value={inputs.date.value}
           onDateChange={inputChangeHandler.bind(this, "date")}
-          style={styles.rowInput}
           isInvalid={!inputs.date.isValid}
+          errorMessage="Please pick a valid date"
         />
       </View>
 
-      <Input
-        label="Description"
-        textInputConfig={{
-          multiline: true,
-          onChangeText: inputChangeHandler.bind(this, "description"),
-          value: inputs.description.value,
-        }}
-        multiline={true}
-        isInvalid={!inputs.description.isValid}
-      />
+      {/* ── Account Section ── */}
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>
+          {isTransfer ? "Accounts" : "Account"}
+        </Text>
 
-      {isTransfer ? (
-        <View style={styles.inputsRow}>
+        {isTransfer ? (
+          <>
+            <Picker
+              label="From"
+              selectedValue={inputs.account_id.value}
+              onValueChange={(val) => inputChangeHandler("account_id", val)}
+              items={accountItems}
+              isInvalid={!inputs.account_id.isValid}
+            />
+            <View style={styles.transferArrow}>
+              <View style={styles.transferArrowLine} />
+              <View style={styles.transferArrowIcon}>
+                <Ionicons
+                  name="arrow-down"
+                  size={16}
+                  color={colors.transfer500}
+                />
+              </View>
+              <View style={styles.transferArrowLine} />
+            </View>
+            <Picker
+              label="To"
+              selectedValue={inputs.transfer_to_account_id.value}
+              onValueChange={(val) =>
+                inputChangeHandler("transfer_to_account_id", val)
+              }
+              items={accountItems}
+              isInvalid={!inputs.transfer_to_account_id.isValid}
+            />
+            {!inputs.transfer_to_account_id.isValid && (
+              <Text style={styles.inlineError}>
+                Select a different target account
+              </Text>
+            )}
+          </>
+        ) : (
           <Picker
-            label="From Account"
+            label="Account"
             selectedValue={inputs.account_id.value}
             onValueChange={(val) => inputChangeHandler("account_id", val)}
             items={accountItems}
-            style={styles.rowInput}
             isInvalid={!inputs.account_id.isValid}
           />
-          <Picker
-            label="To Account"
-            selectedValue={inputs.transfer_to_account_id.value}
-            onValueChange={(val) =>
-              inputChangeHandler("transfer_to_account_id", val)
-            }
-            items={accountItems}
-            style={styles.rowInput}
-            isInvalid={!inputs.transfer_to_account_id.isValid}
-          />
-        </View>
-      ) : (
-        <Picker
-          label="Account"
-          selectedValue={inputs.account_id.value}
-          onValueChange={(val) => inputChangeHandler("account_id", val)}
-          items={accountItems}
-          isInvalid={!inputs.account_id.isValid}
-        />
-      )}
+        )}
+        {!inputs.account_id.isValid && (
+          <Text style={styles.inlineError}>Please select an account</Text>
+        )}
+      </View>
 
-      {!inputs.amount.isValid && (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Please enter a valid amount</Text>
-        </View>
-      )}
-      {!inputs.date.isValid && (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Please enter a valid date</Text>
-        </View>
-      )}
-      {!inputs.description.isValid && (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Please enter a description</Text>
-        </View>
-      )}
-      {!inputs.account_id.isValid && (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Please select an account</Text>
-        </View>
-      )}
-      {!inputs.transfer_to_account_id.isValid && isTransfer && (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>
-            Please select a different target account
-          </Text>
-        </View>
-      )}
-
+      {/* ── Action Buttons ── */}
       <View style={styles.buttons}>
-        <Button mode="flat" style={styles.button} onPress={onCancel}>
-          Cancel
-        </Button>
-        <Button style={styles.button} onPress={submitHandler}>
+        <Button style={styles.submitButton} onPress={submitHandler}>
           {submitButtonLabel}
         </Button>
+        <Pressable onPress={onCancel} style={styles.cancelButton}>
+          <Text style={styles.cancelText}>Cancel</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -278,21 +296,19 @@ export default TransactionForm;
 
 const getStyles = (colors) =>
   StyleSheet.create({
-    title: {
-      fontSize: 28,
-      fontWeight: "700",
-      color: colors.gray800,
-      marginBottom: 24,
-      marginTop: 8,
-      textAlign: "center",
-    },
     form: {
-      marginTop: 16,
+      gap: 16,
     },
+
+    /* ── Type Selector ── */
     typeSelector: {
       flexDirection: "row",
-      marginBottom: 16,
       gap: 8,
+      padding: 4,
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     typeButton: {
       flex: 1,
@@ -302,50 +318,128 @@ const getStyles = (colors) =>
       gap: 6,
       paddingVertical: 12,
       borderRadius: 12,
-      backgroundColor: "rgba(255,255,255,0.06)",
-      borderWidth: 1,
-      borderColor: colors.border,
+      backgroundColor: "transparent",
+      borderWidth: 1.5,
+      borderColor: "transparent",
     },
     typeButtonText: {
-      fontSize: 14,
+      fontSize: 13,
       fontWeight: "600",
       color: colors.gray500,
     },
     typeButtonTextActive: {
       color: "white",
+      fontWeight: "700",
     },
-    inputsRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      gap: 8,
-    },
-    rowInput: {
-      flex: 1,
-    },
-    buttons: {
-      flexDirection: "row",
-      justifyContent: "center",
+
+    /* ── Amount Card ── */
+    amountCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 20,
+      padding: 20,
       alignItems: "center",
-      marginTop: 24,
-      gap: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
-    button: {
+    amountLabel: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.gray500,
+      textTransform: "uppercase",
+      letterSpacing: 1,
+      marginBottom: 8,
+    },
+    amountRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    currencySymbol: {
+      fontSize: 32,
+      fontWeight: "700",
+      marginRight: 4,
+    },
+    amountInput: {
+      marginVertical: 0,
+      marginHorizontal: 0,
+    },
+    amountInputField: {
+      fontSize: 36,
+      fontWeight: "700",
+      textAlign: "center",
+      padding: 8,
+      borderWidth: 0,
+      backgroundColor: "transparent",
+      color: colors.gray800,
       minWidth: 120,
+    },
+
+    /* ── Section Card ── */
+    sectionCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 20,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    sectionTitle: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: colors.gray500,
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
+      marginBottom: 4,
+      marginLeft: 4,
+    },
+
+    /* ── Transfer Arrow ── */
+    transferArrow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      marginVertical: -4,
+    },
+    transferArrowLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: colors.border,
+    },
+    transferArrowIcon: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: colors.primary50,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
       marginHorizontal: 8,
     },
-    errorText: {
+
+    /* ── Inline errors ── */
+    inlineError: {
       color: colors.error500,
-      textAlign: "center",
-      margin: 8,
-      fontSize: 13,
+      fontSize: 12,
       fontWeight: "500",
+      marginTop: 2,
+      marginLeft: 4,
     },
-    errorContainer: {
-      marginVertical: 4,
-      padding: 12,
-      backgroundColor: colors.error50,
-      borderRadius: 12,
-      borderLeftWidth: 4,
-      borderLeftColor: colors.error500,
+
+    /* ── Action Buttons ── */
+    buttons: {
+      marginTop: 8,
+      gap: 12,
+    },
+    submitButton: {
+      width: "100%",
+    },
+    cancelButton: {
+      alignItems: "center",
+      paddingVertical: 12,
+    },
+    cancelText: {
+      color: colors.gray500,
+      fontSize: 15,
+      fontWeight: "600",
     },
   });

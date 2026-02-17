@@ -13,7 +13,7 @@ function Accounts() {
 
   const totalBalance = accounts.reduce(
     (sum, acc) => sum + getAccountBalance(acc.id),
-    0
+    0,
   );
 
   const styles = getStyles(colors);
@@ -31,11 +31,7 @@ function Accounts() {
       >
         <View style={styles.cardLeft}>
           <View style={styles.iconContainer}>
-            <Ionicons
-              name="wallet"
-              size={24}
-              color={colors.primary400}
-            />
+            <Ionicons name="wallet" size={24} color={colors.primary400} />
           </View>
           <Text style={styles.accountName}>{item.name}</Text>
         </View>
@@ -43,13 +39,11 @@ function Accounts() {
           style={[
             styles.balance,
             {
-              color: isPositive
-                ? colors.success500
-                : colors.error500,
+              color: isPositive ? colors.success500 : colors.error500,
             },
           ]}
         >
-          ${balance.toFixed(2)}
+          {balance.toFixed(2)} EGP
         </Text>
       </Pressable>
     );
@@ -59,7 +53,7 @@ function Accounts() {
     <View style={styles.container}>
       <View style={styles.totalCard}>
         <Text style={styles.totalLabel}>Total Balance</Text>
-        <Text style={styles.totalAmount}>${totalBalance.toFixed(2)}</Text>
+        <Text style={styles.totalAmount}>{totalBalance.toFixed(2)} EGP</Text>
       </View>
       {accounts.length > 0 ? (
         <FlatList

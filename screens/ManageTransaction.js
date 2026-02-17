@@ -1,5 +1,5 @@
 import { useLayoutEffect, useContext, useState } from "react";
-import { View, StyleSheet, ScrollView } from "react-native";
+import { View, Text, StyleSheet, ScrollView } from "react-native";
 import IconButton from "../components/UI/IconButton";
 import { useTheme } from "../store/theme-context";
 import { AppContext } from "../store/app-context";
@@ -97,6 +97,8 @@ function ManageTransaction({ route, navigation }) {
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
     >
       <TransactionForm
         onCancel={cancelHandler}
@@ -104,14 +106,19 @@ function ManageTransaction({ route, navigation }) {
         submitButtonLabel={isEditing ? "Update" : "Add"}
         defaultValues={defaultValues}
       />
+
       {isEditing && (
         <View style={styles.deleteContainer}>
-          <IconButton
-            icon="trash"
-            size={36}
-            color={colors.error500}
-            onPress={deleteHandler}
-          />
+          <View style={styles.deleteDivider} />
+          <View style={styles.deleteRow}>
+            <Text style={styles.deleteLabel}>Delete this transaction</Text>
+            <IconButton
+              icon="trash"
+              size={28}
+              color={colors.error500}
+              onPress={deleteHandler}
+            />
+          </View>
         </View>
       )}
     </ScrollView>
@@ -124,17 +131,29 @@ const getStyles = (colors) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      paddingTop: 0,
       backgroundColor: colors.primary700,
     },
     contentContainer: {
-      padding: 24,
+      padding: 20,
+      paddingBottom: 40,
     },
     deleteContainer: {
-      marginTop: 8,
-      paddingTop: 8,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
+      marginTop: 24,
+    },
+    deleteDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginBottom: 16,
+    },
+    deleteRow: {
+      flexDirection: "row",
       alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 8,
+    },
+    deleteLabel: {
+      color: colors.gray800,
+      fontSize: 14,
+      fontWeight: "500",
     },
   });

@@ -17,8 +17,8 @@ function ExpensesSummary({ transactions, periodName }) {
     <View style={styles.container}>
       <Text style={styles.period}>{periodName}</Text>
       <View style={styles.amounts}>
-        <Text style={styles.income}>+${income.toFixed(2)}</Text>
-        <Text style={styles.expense}>-${expenses.toFixed(2)}</Text>
+        <Text style={styles.income}>+{income.toFixed(2)} EGP</Text>
+        <Text style={styles.expense}>-{expenses.toFixed(2)} EGP</Text>
       </View>
     </View>
   );

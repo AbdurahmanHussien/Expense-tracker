@@ -6,7 +6,15 @@ import { useTheme } from "../../store/theme-context";
 import { getFormattedDate } from "../../utils/date";
 import { AppContext } from "../../store/app-context";
 
-function ExpenseItem({ id, description, amount, date, type, account_id, transfer_to_account_id }) {
+function ExpenseItem({
+  id,
+  description,
+  amount,
+  date,
+  type,
+  account_id,
+  transfer_to_account_id,
+}) {
   const navigation = useNavigation();
   const { accounts } = useContext(AppContext);
   const { theme } = useTheme();
@@ -54,7 +62,9 @@ function ExpenseItem({ id, description, amount, date, type, account_id, transfer
     >
       <View style={[styles.item, { borderLeftColor: config.borderColor }]}>
         <View style={styles.leftSection}>
-          <View style={[styles.iconCircle, { backgroundColor: config.bgColor }]}>
+          <View
+            style={[styles.iconCircle, { backgroundColor: config.bgColor }]}
+          >
             <Ionicons name={config.icon} size={20} color={config.color} />
           </View>
           <View style={styles.textSection}>
@@ -69,9 +79,12 @@ function ExpenseItem({ id, description, amount, date, type, account_id, transfer
             </Text>
           </View>
         </View>
-        <View style={[styles.amountContainer, { backgroundColor: config.bgColor }]}>
+        <View
+          style={[styles.amountContainer, { backgroundColor: config.bgColor }]}
+        >
           <Text style={[styles.amount, { color: config.color }]}>
-            {config.prefix}${amount.toFixed(2)}
+            {config.prefix}
+            {amount.toFixed(2)} EGP
           </Text>
         </View>
       </View>
@@ -126,15 +139,15 @@ const getStyles = (colors) =>
       color: colors.gray500,
     },
     amountContainer: {
-      paddingHorizontal: 14,
-      paddingVertical: 8,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
       borderRadius: 12,
       minWidth: 85,
       alignItems: "center",
     },
     amount: {
-      fontWeight: "700",
-      fontSize: 15,
+      fontWeight: "600",
+      fontSize: 14,
     },
     pressed: {
       opacity: 0.7,
