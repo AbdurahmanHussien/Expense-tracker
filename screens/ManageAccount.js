@@ -1,5 +1,6 @@
 import { useLayoutEffect, useContext, useState } from "react";
-import { View, Text, StyleSheet, Alert, ScrollView } from "react-native";
+import { View, Text, StyleSheet, Alert, ScrollView, Pressable } from "react-native";
+import { useTranslation } from "react-i18next";
 import Input from "../components/ManageExpense/Input";
 import Button from "../components/UI/Button";
 import IconButton from "../components/UI/IconButton";
@@ -14,11 +15,14 @@ import {
 import LoadingOverlay from "../components/UI/LoadingOverlay";
 import ErrorOverlay from "../components/UI/ErrorOverlay";
 
+const CURRENCIES = ["EGP", "USD"];
+
 function ManageAccount({ route, navigation }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState();
   const { theme } = useTheme();
   const colors = theme.colors;
+  const { t } = useTranslation();
 
   const editedAccountId = route.params?.accountId;
   const isEditing = !!editedAccountId;
@@ -42,11 +46,15 @@ function ManageAccount({ route, navigation }) {
     },
   });
 
+  const [currency, setCurrency] = useState(
+    selectedAccount?.currency || "EGP"
+  );
+
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: isEditing ? "Edit Account" : "Add Account",
+      title: isEditing ? t("nav.editAccount") : t("nav.addAccount"),
     });
-  }, [navigation, isEditing]);
+  }, [navigation, isEditing, t]);
 
   function inputChangeHandler(field, value) {
     setInputs((cur) => ({
@@ -77,18 +85,19 @@ function ManageAccount({ route, navigation }) {
     setIsSubmitting(true);
     try {
       if (isEditing) {
-        await updateAccountDB(editedAccountId, name, balance);
+        await updateAccountDB(editedAccountId, name, balance, currency);
         appCtx.updateAccount(editedAccountId, {
           name,
           initial_balance: balance,
+          currency,
         });
       } else {
-        const id = await insertAccount(name, balance);
-        appCtx.addAccount({ id, name, initial_balance: balance });
+        const id = await insertAccount(name, balance, currency);
+        appCtx.addAccount({ id, name, initial_balance: balance, currency });
       }
       navigation.goBack();
     } catch (err) {
-      setError(err.message || "Failed to save account");
+      setError(err.message || t("accounts.failedSave"));
       setIsSubmitting(false);
     }
   }
@@ -97,31 +106,35 @@ function ManageAccount({ route, navigation }) {
     const count = await countTransactionsForAccount(editedAccountId);
     if (count > 0) {
       Alert.alert(
-        "Cannot Delete",
-        `This account has ${count} transaction(s). Delete or reassign them first.`,
-        [{ text: "OK" }]
+        t("accounts.cannotDelete"),
+        t("accounts.cannotDeleteMsg", { count }),
+        [{ text: t("common.ok") }]
       );
       return;
     }
 
-    Alert.alert("Delete Account", `Delete "${selectedAccount.name}"?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          setIsSubmitting(true);
-          try {
-            await deleteAccountDB(editedAccountId);
-            appCtx.deleteAccount(editedAccountId);
-            navigation.goBack();
-          } catch (err) {
-            setError(err.message || "Failed to delete account");
-            setIsSubmitting(false);
-          }
+    Alert.alert(
+      t("accounts.deleteAccount"),
+      t("accounts.deleteAccountConfirm", { name: selectedAccount.name }),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("common.delete"),
+          style: "destructive",
+          onPress: async () => {
+            setIsSubmitting(true);
+            try {
+              await deleteAccountDB(editedAccountId);
+              appCtx.deleteAccount(editedAccountId);
+              navigation.goBack();
+            } catch (err) {
+              setError(err.message || t("accounts.failedDelete"));
+              setIsSubmitting(false);
+            }
+          },
         },
-      },
-    ]);
+      ]
+    );
   }
 
   if (isSubmitting) return <LoadingOverlay />;
@@ -134,19 +147,19 @@ function ManageAccount({ route, navigation }) {
       contentContainerStyle={styles.contentContainer}
     >
       <Text style={styles.title}>
-        {isEditing ? "Edit Account" : "New Account"}
+        {isEditing ? t("accounts.editAccount") : t("accounts.newAccount")}
       </Text>
       <Input
-        label="Account Name"
+        label={t("accounts.accountName")}
         textInputConfig={{
           onChangeText: inputChangeHandler.bind(this, "name"),
           value: inputs.name.value,
-          placeholder: "e.g. Cash, Bank, Savings",
+          placeholder: t("accounts.accountNamePlaceholder"),
         }}
         isInvalid={!inputs.name.isValid}
       />
       <Input
-        label="Initial Balance"
+        label={t("accounts.initialBalance")}
         textInputConfig={{
           keyboardType: "decimal-pad",
           onChangeText: inputChangeHandler.bind(this, "initial_balance"),
@@ -155,14 +168,42 @@ function ManageAccount({ route, navigation }) {
         isInvalid={!inputs.initial_balance.isValid}
       />
 
+      <View style={styles.currencySection}>
+        <Text style={styles.currencyLabel}>{t("accounts.currency")}</Text>
+        <View style={styles.currencyRow}>
+          {CURRENCIES.map((curr) => {
+            const isActive = currency === curr;
+            return (
+              <Pressable
+                key={curr}
+                onPress={() => setCurrency(curr)}
+                style={[
+                  styles.currencyButton,
+                  isActive && styles.currencyButtonActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.currencyButtonText,
+                    isActive && styles.currencyButtonTextActive,
+                  ]}
+                >
+                  {curr === "USD" ? "🇺🇸 USD" : "🇪🇬 EGP"}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
       {!inputs.name.isValid && (
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Please enter an account name</Text>
+          <Text style={styles.errorText}>{t("accounts.errorName")}</Text>
         </View>
       )}
       {!inputs.initial_balance.isValid && (
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Please enter a valid balance</Text>
+          <Text style={styles.errorText}>{t("accounts.errorBalance")}</Text>
         </View>
       )}
 
@@ -172,10 +213,10 @@ function ManageAccount({ route, navigation }) {
           style={styles.button}
           onPress={() => navigation.goBack()}
         >
-          Cancel
+          {t("common.cancel")}
         </Button>
         <Button style={styles.button} onPress={submitHandler}>
-          {isEditing ? "Update" : "Add"}
+          {isEditing ? t("common.update") : t("common.add")}
         </Button>
       </View>
 
@@ -211,6 +252,44 @@ const getStyles = (colors) =>
       marginBottom: 24,
       marginTop: 8,
       textAlign: "center",
+    },
+    currencySection: {
+      marginVertical: 8,
+    },
+    currencyLabel: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: colors.gray500,
+      marginBottom: 8,
+      marginLeft: 4,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
+    currencyRow: {
+      flexDirection: "row",
+      gap: 12,
+    },
+    currencyButton: {
+      flex: 1,
+      paddingVertical: 14,
+      borderRadius: 14,
+      backgroundColor: colors.surface,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      alignItems: "center",
+    },
+    currencyButtonActive: {
+      backgroundColor: colors.primary100,
+      borderColor: colors.primary400,
+    },
+    currencyButtonText: {
+      fontSize: 15,
+      fontWeight: "600",
+      color: colors.gray500,
+    },
+    currencyButtonTextActive: {
+      color: colors.primary500,
+      fontWeight: "700",
     },
     buttons: {
       flexDirection: "row",

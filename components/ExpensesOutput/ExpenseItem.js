@@ -14,42 +14,49 @@ function ExpenseItem({
   type,
   account_id,
   transfer_to_account_id,
+  category_id,
 }) {
   const navigation = useNavigation();
-  const { accounts } = useContext(AppContext);
+  const { accounts, categories } = useContext(AppContext);
   const { theme } = useTheme();
   const colors = theme.colors;
 
   const TYPE_CONFIG = {
     expense: {
       icon: "arrow-up",
-      color: colors.error500,
-      borderColor: colors.error500,
-      bgColor: colors.error50,
+      color: colors.expenseColor,
+      borderColor: colors.expenseColor,
+      bgColor: colors.expenseBg,
       prefix: "-",
     },
     income: {
       icon: "arrow-down",
-      color: colors.success500,
-      borderColor: colors.success500,
-      bgColor: "rgba(74, 222, 128, 0.12)",
+      color: colors.incomeColor,
+      borderColor: colors.incomeColor,
+      bgColor: colors.incomeBg,
       prefix: "+",
     },
     transfer: {
       icon: "swap-horizontal",
       color: colors.transfer500,
       borderColor: colors.transfer500,
-      bgColor: "rgba(96, 165, 250, 0.12)",
+      bgColor: colors.primary100,
       prefix: "",
     },
   };
 
   const config = TYPE_CONFIG[type] || TYPE_CONFIG.expense;
   const styles = getStyles(colors);
-  const accountName = accounts.find((a) => a.id === account_id)?.name || "";
+  const account = accounts.find((a) => a.id === account_id);
+  const accountName = account?.name || "";
+  const accountCurrency = account?.currency || "EGP";
   const toAccountName = transfer_to_account_id
     ? accounts.find((a) => a.id === transfer_to_account_id)?.name || ""
     : "";
+
+  const category = category_id
+    ? categories.find((c) => c.id === category_id)
+    : null;
 
   function pressHandler() {
     navigation.navigate("ManageTransaction", { transactionId: id });
@@ -73,10 +80,52 @@ function ExpenseItem({
             </Text>
             <Text style={styles.meta} numberOfLines={1}>
               {getFormattedDate(date)}
-              {type === "transfer"
-                ? ` \u00B7 ${accountName} \u2192 ${toAccountName}`
-                : ` \u00B7 ${accountName}`}
             </Text>
+            <View style={styles.metaRow}>
+              <View
+                style={[
+                  styles.accountBadge,
+                  { backgroundColor: config.bgColor },
+                ]}
+              >
+                <Ionicons
+                  name="wallet-outline"
+                  size={10}
+                  color={config.color}
+                />
+                <Text
+                  style={[styles.accountBadgeText, { color: config.color }]}
+                  numberOfLines={1}
+                >
+                  {type === "transfer"
+                    ? `${accountName} → ${toAccountName}`
+                    : accountName}
+                </Text>
+              </View>
+              {category && (
+                <View
+                  style={[
+                    styles.categoryBadge,
+                    { backgroundColor: category.color + "26" },
+                  ]}
+                >
+                  <Ionicons
+                    name={category.icon}
+                    size={10}
+                    color={category.color}
+                  />
+                  <Text
+                    style={[
+                      styles.categoryBadgeText,
+                      { color: category.color },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {category.name}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
         <View
@@ -84,7 +133,7 @@ function ExpenseItem({
         >
           <Text style={[styles.amount, { color: config.color }]}>
             {config.prefix}
-            {amount.toFixed(2)} EGP
+            {amount.toFixed(2)} {accountCurrency}
           </Text>
         </View>
       </View>
@@ -98,18 +147,20 @@ const getStyles = (colors) =>
   StyleSheet.create({
     item: {
       padding: 16,
-      marginVertical: 6,
+      marginVertical: 5,
       marginHorizontal: 4,
       backgroundColor: colors.surface,
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
       borderRadius: 16,
-      elevation: 4,
+      borderWidth: 1,
+      borderColor: colors.border,
+      elevation: 2,
       shadowColor: "#000",
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
       borderLeftWidth: 4,
     },
     leftSection: {
@@ -134,9 +185,42 @@ const getStyles = (colors) =>
       color: colors.gray800,
       marginBottom: 4,
     },
+    metaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      flexWrap: "wrap",
+      gap: 6,
+    },
     meta: {
       fontSize: 12,
       color: colors.gray500,
+      marginBottom: 4,
+    },
+    accountBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 3,
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      borderRadius: 6,
+    },
+    accountBadgeText: {
+      fontSize: 11,
+      fontWeight: "700",
+      maxWidth: 120,
+    },
+    categoryBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 3,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+    },
+    categoryBadgeText: {
+      fontSize: 10,
+      fontWeight: "700",
+      maxWidth: 80,
     },
     amountContainer: {
       paddingHorizontal: 8,

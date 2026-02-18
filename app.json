@@ -27,7 +27,10 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["@react-native-community/datetimepicker"],
+    "plugins": [
+      "@react-native-community/datetimepicker",
+      ["expo-build-properties", { "android": { "minSdkVersion": 24 } }]
+    ],
     "extra": {
       "eas": {
         "projectId": "c4304bf6-9bfb-474c-8b13-ee2b61799acb"

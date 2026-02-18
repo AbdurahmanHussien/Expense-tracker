@@ -1,5 +1,7 @@
 import { useLayoutEffect, useContext, useState } from "react";
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Pressable } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import IconButton from "../components/UI/IconButton";
 import { useTheme } from "../store/theme-context";
 import { AppContext } from "../store/app-context";
@@ -17,6 +19,7 @@ function ManageTransaction({ route, navigation }) {
   const [error, setError] = useState();
   const { theme } = useTheme();
   const colors = theme.colors;
+  const { t } = useTranslation();
 
   const editedTxId = route.params?.transactionId;
   const initialType = route.params?.initialType;
@@ -35,15 +38,14 @@ function ManageTransaction({ route, navigation }) {
   useLayoutEffect(() => {
     const type = selectedTx?.type || initialType || "expense";
     const titles = {
-      expense: isEditing ? "Edit Expense" : "Add Expense",
-      income: isEditing ? "Edit Income" : "Add Income",
-      transfer: isEditing ? "Edit Transfer" : "New Transfer",
+      expense: isEditing ? t("nav.editExpense") : t("nav.addExpense"),
+      income: isEditing ? t("nav.editIncome") : t("nav.addIncome"),
+      transfer: isEditing ? t("nav.editTransfer") : t("nav.addTransfer"),
     };
     navigation.setOptions({
-      title:
-        titles[type] || (isEditing ? "Edit Transaction" : "Add Transaction"),
+      title: titles[type] || (isEditing ? t("nav.editTransaction") : t("nav.addTransaction")),
     });
-  }, [navigation, isEditing, selectedTx, initialType]);
+  }, [navigation, isEditing, selectedTx, initialType, t]);
 
   function errorHandler() {
     setError(null);
@@ -56,7 +58,7 @@ function ManageTransaction({ route, navigation }) {
       appCtx.deleteTransaction(editedTxId);
       navigation.goBack();
     } catch (err) {
-      setError(err.message || "Failed to delete transaction");
+      setError(err.message || t("form.failedDelete"));
       setIsSubmitting(false);
     }
   }
@@ -81,7 +83,7 @@ function ManageTransaction({ route, navigation }) {
       }
       navigation.goBack();
     } catch (err) {
-      setError(err.message || "Failed to save transaction");
+      setError(err.message || t("form.failedSave"));
       setIsSubmitting(false);
     }
   }
@@ -97,28 +99,32 @@ function ManageTransaction({ route, navigation }) {
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
-      keyboardShouldPersistTaps="handled"
+      keyboardShouldPersistTaps="always"
+      keyboardDismissMode="on-drag"
       showsVerticalScrollIndicator={false}
     >
       <TransactionForm
         onCancel={cancelHandler}
         onSubmit={confirmHandler}
-        submitButtonLabel={isEditing ? "Update" : "Add"}
+        submitButtonLabel={isEditing ? t("common.update") : t("common.add")}
         defaultValues={defaultValues}
       />
 
       {isEditing && (
         <View style={styles.deleteContainer}>
           <View style={styles.deleteDivider} />
-          <View style={styles.deleteRow}>
-            <Text style={styles.deleteLabel}>Delete this transaction</Text>
-            <IconButton
-              icon="trash"
-              size={28}
-              color={colors.error500}
-              onPress={deleteHandler}
-            />
-          </View>
+          <Pressable
+            style={({ pressed }) => [
+              styles.deleteButton,
+              pressed && styles.deleteButtonPressed,
+            ]}
+            onPress={deleteHandler}
+          >
+            <View style={styles.deleteIconWrap}>
+              <Ionicons name="trash-outline" size={18} color={colors.error500} />
+            </View>
+            <Text style={styles.deleteButtonText}>{t("form.deleteTransaction")}</Text>
+          </Pressable>
         </View>
       )}
     </ScrollView>
@@ -138,22 +144,41 @@ const getStyles = (colors) =>
       paddingBottom: 40,
     },
     deleteContainer: {
-      marginTop: 24,
+      marginTop: 28,
     },
     deleteDivider: {
       height: 1,
       backgroundColor: colors.border,
-      marginBottom: 16,
+      marginBottom: 20,
     },
-    deleteRow: {
+    deleteButton: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 8,
+      justifyContent: "center",
+      gap: 10,
+      backgroundColor: colors.error50,
+      borderWidth: 1.5,
+      borderColor: colors.error500,
+      borderRadius: 16,
+      paddingVertical: 15,
+      paddingHorizontal: 20,
     },
-    deleteLabel: {
-      color: colors.gray800,
-      fontSize: 14,
-      fontWeight: "500",
+    deleteButtonPressed: {
+      opacity: 0.75,
+      transform: [{ scale: 0.98 }],
+    },
+    deleteIconWrap: {
+      width: 30,
+      height: 30,
+      borderRadius: 10,
+      backgroundColor: "rgba(220,38,38,0.12)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    deleteButtonText: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: colors.error500,
+      letterSpacing: 0.2,
     },
   });

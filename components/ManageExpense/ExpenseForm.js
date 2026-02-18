@@ -1,6 +1,7 @@
-import { View, Text, StyleSheet, Pressable } from "react-native";
-import { useContext, useState } from "react";
+import { View, Text, StyleSheet, Pressable, ActivityIndicator } from "react-native";
+import { useContext, useState, useEffect, useCallback } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import Input from "./Input";
 import DatePickerInput from "./DatePicker";
 import Picker from "../UI/Picker";
@@ -8,6 +9,7 @@ import Button from "../UI/Button";
 import { useTheme } from "../../store/theme-context";
 import { getFormattedDate } from "../../utils/date";
 import { AppContext } from "../../store/app-context";
+import { fetchUsdToEgpRate, convertCurrency } from "../../utils/currency";
 
 function TransactionForm({
   submitButtonLabel,
@@ -15,26 +17,27 @@ function TransactionForm({
   onCancel,
   defaultValues,
 }) {
-  const { accounts } = useContext(AppContext);
+  const { accounts, categories } = useContext(AppContext);
   const { theme } = useTheme();
   const colors = theme.colors;
+  const { t } = useTranslation();
 
   const TYPES = [
     {
       value: "expense",
-      label: "Expense",
+      label: t("form.expense"),
       icon: "arrow-up-circle",
       color: colors.error500,
     },
     {
       value: "income",
-      label: "Income",
+      label: t("form.income"),
       icon: "arrow-down-circle",
       color: colors.success500,
     },
     {
       value: "transfer",
-      label: "Transfer",
+      label: t("form.transfer"),
       icon: "swap-horizontal-outline",
       color: colors.transfer500,
     },
@@ -68,9 +71,54 @@ function TransactionForm({
       value: defaultValues?.transfer_to_account_id || null,
       isValid: true,
     },
+    category_id: {
+      value: defaultValues?.category_id || null,
+      isValid: true,
+    },
   });
 
+  // Exchange rate state for cross-currency transfers
+  const [exchangeRate, setExchangeRate] = useState(null);
+  const [rateLoading, setRateLoading] = useState(false);
+  const [rateError, setRateError] = useState(null);
+
   const isTransfer = inputs.type.value === "transfer";
+
+  const fromAccount = accounts.find((a) => a.id === inputs.account_id.value);
+  const toAccount = accounts.find(
+    (a) => a.id === inputs.transfer_to_account_id.value
+  );
+  const fromCurrency = fromAccount?.currency || "EGP";
+  const toCurrency = toAccount?.currency || "EGP";
+  const isCrossCurrency =
+    isTransfer &&
+    toAccount != null &&
+    fromAccount != null &&
+    fromCurrency !== toCurrency;
+
+  const loadRate = useCallback(async () => {
+    setRateLoading(true);
+    setRateError(null);
+    try {
+      const rate = await fetchUsdToEgpRate();
+      setExchangeRate(rate);
+    } catch {
+      setRateError(t("form.rateFetchError"));
+    } finally {
+      setRateLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isCrossCurrency) {
+      loadRate();
+    }
+  }, [isCrossCurrency, loadRate]);
+
+  const receivedAmount =
+    isCrossCurrency && exchangeRate && inputs.amount.value
+      ? convertCurrency(+inputs.amount.value, fromCurrency, toCurrency, exchangeRate)
+      : null;
 
   function inputChangeHandler(inputIdentifier, value) {
     setInputs((cur) => ({
@@ -83,6 +131,9 @@ function TransactionForm({
     setInputs((cur) => ({
       ...cur,
       type: { value: type, isValid: true },
+      ...(type === "transfer"
+        ? { category_id: { value: null, isValid: true } }
+        : {}),
     }));
   }
 
@@ -96,6 +147,10 @@ function TransactionForm({
       transfer_to_account_id: isTransfer
         ? inputs.transfer_to_account_id.value
         : null,
+      category_id: !isTransfer ? inputs.category_id.value : null,
+      received_amount: isCrossCurrency && receivedAmount != null
+        ? receivedAmount
+        : null,
     };
 
     const amountIsValid = !isNaN(txData.amount) && txData.amount > 0;
@@ -107,13 +162,7 @@ function TransactionForm({
       (txData.transfer_to_account_id !== null &&
         txData.transfer_to_account_id !== txData.account_id);
 
-    if (
-      !amountIsValid ||
-      !dateIsValid ||
-      !descriptionIsValid ||
-      !accountIsValid ||
-      !transferAccountIsValid
-    ) {
+    if (!amountIsValid || !dateIsValid || !descriptionIsValid || !accountIsValid || !transferAccountIsValid) {
       setInputs((cur) => ({
         ...cur,
         amount: { ...cur.amount, isValid: amountIsValid },
@@ -133,8 +182,19 @@ function TransactionForm({
 
   const accountItems = accounts.map((acc) => ({
     value: acc.id,
-    label: acc.name,
+    label: `${acc.name} (${acc.currency || "EGP"})`,
+    walletIcon: true,
   }));
+
+  const categoryItems = [
+    { value: null, label: t("form.none") },
+    ...categories.map((cat) => ({
+      value: cat.id,
+      label: cat.name,
+      icon: cat.icon,
+      color: cat.color,
+    })),
+  ];
 
   const selectedType = TYPES.find((t) => t.value === inputs.type.value);
   const styles = getStyles(colors);
@@ -177,7 +237,9 @@ function TransactionForm({
 
       {/* ── Amount Card ── */}
       <View style={styles.amountCard}>
-        <Text style={styles.amountLabel}>Amount</Text>
+        <Text style={styles.amountLabel}>
+          {isCrossCurrency ? t("form.amountCurrency", { currency: fromCurrency }) : t("form.amount")}
+        </Text>
         <View style={styles.amountRow}>
           <Input
             textInputConfig={{
@@ -190,50 +252,110 @@ function TransactionForm({
             style={styles.amountInput}
             inputStyle={styles.amountInputField}
             isInvalid={!inputs.amount.isValid}
-            errorMessage="Enter a valid amount"
+            errorMessage={t("form.errorAmount")}
           />
           <Text style={[styles.currencySymbol, { color: selectedType?.color }]}>
-            EGP
+            {isCrossCurrency ? fromCurrency : (fromAccount?.currency || "EGP")}
           </Text>
         </View>
       </View>
 
+      {/* ── Currency Conversion Panel ── */}
+      {isCrossCurrency && (
+        <View style={styles.conversionCard}>
+          <View style={styles.conversionHeader}>
+            <Ionicons name="swap-horizontal" size={18} color={colors.transfer500} />
+            <Text style={styles.conversionTitle}>{t("form.currencyConversion")}</Text>
+            <Pressable onPress={loadRate} style={styles.refreshButton} disabled={rateLoading}>
+              {rateLoading ? (
+                <ActivityIndicator size={14} color={colors.primary400} />
+              ) : (
+                <Ionicons name="refresh" size={16} color={colors.primary400} />
+              )}
+            </Pressable>
+          </View>
+
+          {rateError && (
+            <Text style={styles.rateError}>{rateError}</Text>
+          )}
+
+          {exchangeRate && !rateLoading && (
+            <>
+              <View style={styles.rateRow}>
+                <Text style={styles.rateLabel}>{t("form.exchangeRate")}</Text>
+                <Text style={styles.rateValue}>
+                  1 USD = {exchangeRate.toFixed(2)} EGP
+                </Text>
+              </View>
+
+              {receivedAmount != null && inputs.amount.value !== "" && (
+                <View style={styles.conversionResult}>
+                  <View style={styles.conversionFrom}>
+                    <Text style={styles.conversionCurrency}>{fromCurrency}</Text>
+                    <Text style={styles.conversionAmount}>
+                      {(+inputs.amount.value).toFixed(2)}
+                    </Text>
+                  </View>
+                  <View style={styles.conversionArrow}>
+                    <Ionicons name="arrow-forward" size={20} color={colors.transfer500} />
+                  </View>
+                  <View style={styles.conversionTo}>
+                    <Text style={styles.conversionCurrency}>{toCurrency}</Text>
+                    <Text style={[styles.conversionAmount, { color: colors.transfer500 }]}>
+                      {receivedAmount.toFixed(2)}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </>
+          )}
+
+          {rateLoading && !exchangeRate && (
+            <View style={styles.rateLoadingRow}>
+              <ActivityIndicator size="small" color={colors.primary400} />
+              <Text style={styles.rateLoadingText}>{t("form.fetchingRate")}</Text>
+            </View>
+          )}
+        </View>
+      )}
+
       {/* ── Details Section ── */}
       <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>Details</Text>
+        <Text style={styles.sectionTitle}>{t("form.details")}</Text>
 
         <Input
-          label="Description"
+          label={t("form.description")}
           textInputConfig={{
             multiline: true,
+            scrollEnabled: false,
             onChangeText: inputChangeHandler.bind(this, "description"),
             value: inputs.description.value,
-            placeholder: "What was this for?",
+            placeholder: t("form.descriptionPlaceholder"),
           }}
           multiline={true}
           isInvalid={!inputs.description.isValid}
-          errorMessage="Please enter a description"
+          errorMessage={t("form.errorDescription")}
         />
 
         <DatePickerInput
-          label="Date"
+          label={t("form.date")}
           value={inputs.date.value}
           onDateChange={inputChangeHandler.bind(this, "date")}
           isInvalid={!inputs.date.isValid}
-          errorMessage="Please pick a valid date"
+          errorMessage={t("form.errorDate")}
         />
       </View>
 
       {/* ── Account Section ── */}
       <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>
-          {isTransfer ? "Accounts" : "Account"}
+          {isTransfer ? t("form.accounts") : t("form.account")}
         </Text>
 
         {isTransfer ? (
           <>
             <Picker
-              label="From"
+              label={t("form.from")}
               selectedValue={inputs.account_id.value}
               onValueChange={(val) => inputChangeHandler("account_id", val)}
               items={accountItems}
@@ -251,7 +373,7 @@ function TransactionForm({
               <View style={styles.transferArrowLine} />
             </View>
             <Picker
-              label="To"
+              label={t("form.to")}
               selectedValue={inputs.transfer_to_account_id.value}
               onValueChange={(val) =>
                 inputChangeHandler("transfer_to_account_id", val)
@@ -261,13 +383,12 @@ function TransactionForm({
             />
             {!inputs.transfer_to_account_id.isValid && (
               <Text style={styles.inlineError}>
-                Select a different target account
+                {t("form.errorTransferAccount")}
               </Text>
             )}
           </>
         ) : (
           <Picker
-            label="Account"
             selectedValue={inputs.account_id.value}
             onValueChange={(val) => inputChangeHandler("account_id", val)}
             items={accountItems}
@@ -275,9 +396,22 @@ function TransactionForm({
           />
         )}
         {!inputs.account_id.isValid && (
-          <Text style={styles.inlineError}>Please select an account</Text>
+          <Text style={styles.inlineError}>{t("form.errorAccount")}</Text>
         )}
       </View>
+
+      {/* ── Category Section (expense / income only) ── */}
+      {!isTransfer && categories.length > 0 && (
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>{t("form.category")}</Text>
+          <CategoryPicker
+            categories={categories}
+            selectedId={inputs.category_id.value}
+            onSelect={(id) => inputChangeHandler("category_id", id)}
+            colors={colors}
+          />
+        </View>
+      )}
 
       {/* ── Action Buttons ── */}
       <View style={styles.buttons}>
@@ -285,14 +419,106 @@ function TransactionForm({
           {submitButtonLabel}
         </Button>
         <Pressable onPress={onCancel} style={styles.cancelButton}>
-          <Text style={styles.cancelText}>Cancel</Text>
+          <Text style={styles.cancelText}>{t("common.cancel")}</Text>
         </Pressable>
       </View>
     </View>
   );
 }
 
+function CategoryPicker({ categories, selectedId, onSelect, colors }) {
+  const styles = getCategoryPickerStyles(colors);
+  const { t } = useTranslation();
+  return (
+    <View style={styles.grid}>
+      {/* "None" option */}
+      <Pressable
+        onPress={() => onSelect(null)}
+        style={[styles.chip, selectedId === null && styles.chipSelected]}
+      >
+        <Ionicons
+          name="close-circle-outline"
+          size={16}
+          color={selectedId === null ? colors.primary400 : colors.gray500}
+        />
+        <Text
+          style={[
+            styles.chipText,
+            selectedId === null && styles.chipTextSelected,
+          ]}
+        >
+          {t("form.none")}
+        </Text>
+      </Pressable>
+
+      {categories.map((cat) => {
+        const isSelected = selectedId === cat.id;
+        return (
+          <Pressable
+            key={cat.id}
+            onPress={() => onSelect(cat.id)}
+            style={[
+              styles.chip,
+              isSelected && {
+                backgroundColor: cat.color + "33",
+                borderColor: cat.color,
+              },
+            ]}
+          >
+            <Ionicons
+              name={cat.icon}
+              size={16}
+              color={isSelected ? cat.color : colors.gray500}
+            />
+            <Text
+              style={[
+                styles.chipText,
+                isSelected && { color: cat.color, fontWeight: "700" },
+              ]}
+            >
+              {cat.name}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 export default TransactionForm;
+
+const getCategoryPickerStyles = (colors) =>
+  StyleSheet.create({
+    grid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      paddingTop: 4,
+    },
+    chip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 20,
+      backgroundColor: colors.surface,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+    },
+    chipSelected: {
+      backgroundColor: colors.primary100,
+      borderColor: colors.primary400,
+    },
+    chipText: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: colors.gray500,
+    },
+    chipTextSelected: {
+      color: colors.primary400,
+    },
+  });
 
 const getStyles = (colors) =>
   StyleSheet.create({
@@ -372,6 +598,101 @@ const getStyles = (colors) =>
       backgroundColor: "transparent",
       color: colors.gray800,
       minWidth: 120,
+    },
+
+    /* ── Currency Conversion Card ── */
+    conversionCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 20,
+      padding: 16,
+      borderWidth: 1.5,
+      borderColor: colors.transfer500 + "55",
+      gap: 10,
+    },
+    conversionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    conversionTitle: {
+      flex: 1,
+      fontSize: 13,
+      fontWeight: "700",
+      color: colors.transfer500,
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
+    },
+    refreshButton: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.primary50,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    rateRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: 4,
+    },
+    rateLabel: {
+      fontSize: 13,
+      color: colors.gray500,
+      fontWeight: "500",
+    },
+    rateValue: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: colors.gray800,
+    },
+    rateError: {
+      fontSize: 12,
+      color: colors.error500,
+      fontStyle: "italic",
+    },
+    rateLoadingRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingVertical: 4,
+    },
+    rateLoadingText: {
+      fontSize: 13,
+      color: colors.gray500,
+    },
+    conversionResult: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.primary50,
+      borderRadius: 14,
+      padding: 12,
+      gap: 8,
+    },
+    conversionFrom: {
+      flex: 1,
+      alignItems: "center",
+    },
+    conversionTo: {
+      flex: 1,
+      alignItems: "center",
+    },
+    conversionArrow: {
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    conversionCurrency: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: colors.gray500,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+      marginBottom: 2,
+    },
+    conversionAmount: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: colors.gray800,
     },
 
     /* ── Section Card ── */

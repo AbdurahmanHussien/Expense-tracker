@@ -1,8 +1,12 @@
-import { createContext, useReducer } from "react";
+import { createContext, useReducer, useState } from "react";
+import { fetchUsdToEgpRate } from "../utils/currency";
 
 export const AppContext = createContext({
   transactions: [],
   accounts: [],
+  categories: [],
+  exchangeRate: null,
+  exchangeRateLoading: false,
   addTransaction: (txData) => {},
   setTransactions: (transactions) => {},
   deleteTransaction: (id) => {},
@@ -12,6 +16,11 @@ export const AppContext = createContext({
   deleteAccount: (id) => {},
   updateAccount: (id, accountData) => {},
   getAccountBalance: (accountId) => 0,
+  addCategory: (categoryData) => {},
+  setCategories: (categories) => {},
+  deleteCategory: (id) => {},
+  updateCategory: (id, categoryData) => {},
+  refreshExchangeRate: async () => {},
 });
 
 function transactionsReducer(state, action) {
@@ -56,9 +65,43 @@ function accountsReducer(state, action) {
   }
 }
 
+function categoriesReducer(state, action) {
+  switch (action.type) {
+    case "ADD":
+      return [...state, action.payload];
+    case "SET":
+      return action.payload;
+    case "DELETE":
+      return state.filter((cat) => cat.id !== action.payload);
+    case "UPDATE": {
+      const index = state.findIndex((cat) => cat.id === action.payload.id);
+      if (index === -1) return state;
+      const updated = { ...state[index], ...action.payload.data };
+      const newState = [...state];
+      newState[index] = updated;
+      return newState;
+    }
+    default:
+      return state;
+  }
+}
+
 export default function AppContextProvider({ children }) {
   const [transactionsState, txDispatch] = useReducer(transactionsReducer, []);
   const [accountsState, accDispatch] = useReducer(accountsReducer, []);
+  const [categoriesState, catDispatch] = useReducer(categoriesReducer, []);
+  const [exchangeRate, setExchangeRate] = useState(null);
+  const [exchangeRateLoading, setExchangeRateLoading] = useState(false);
+
+  async function refreshExchangeRate() {
+    setExchangeRateLoading(true);
+    try {
+      const rate = await fetchUsdToEgpRate();
+      setExchangeRate(rate);
+    } finally {
+      setExchangeRateLoading(false);
+    }
+  }
 
   function addTransaction(txData) {
     txDispatch({ type: "ADD", payload: txData });
@@ -92,6 +135,22 @@ export default function AppContextProvider({ children }) {
     accDispatch({ type: "UPDATE", payload: { id, data: accountData } });
   }
 
+  function addCategory(categoryData) {
+    catDispatch({ type: "ADD", payload: categoryData });
+  }
+
+  function setCategories(categories) {
+    catDispatch({ type: "SET", payload: categories });
+  }
+
+  function deleteCategory(id) {
+    catDispatch({ type: "DELETE", payload: id });
+  }
+
+  function updateCategory(id, categoryData) {
+    catDispatch({ type: "UPDATE", payload: { id, data: categoryData } });
+  }
+
   function getAccountBalance(accountId) {
     const account = accountsState.find((a) => a.id === accountId);
     if (!account) return 0;
@@ -107,7 +166,8 @@ export default function AppContextProvider({ children }) {
           balance -= tx.amount;
         }
         if (tx.transfer_to_account_id === accountId) {
-          balance += tx.amount;
+          // Use received_amount for cross-currency transfers, fallback to amount
+          balance += tx.received_amount != null ? tx.received_amount : tx.amount;
         }
       }
     });
@@ -117,6 +177,9 @@ export default function AppContextProvider({ children }) {
   const value = {
     transactions: transactionsState,
     accounts: accountsState,
+    categories: categoriesState,
+    exchangeRate,
+    exchangeRateLoading,
     addTransaction,
     setTransactions,
     deleteTransaction,
@@ -126,6 +189,11 @@ export default function AppContextProvider({ children }) {
     deleteAccount,
     updateAccount,
     getAccountBalance,
+    addCategory,
+    setCategories,
+    deleteCategory,
+    updateCategory,
+    refreshExchangeRate,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -2,6 +2,17 @@ import * as SQLite from "expo-sqlite";
 
 let db;
 
+export const DEFAULT_CATEGORIES = [
+  { name: "Food & Dining", icon: "restaurant", color: "#FF6B6B" },
+  { name: "Transport", icon: "car", color: "#4ECDC4" },
+  { name: "Shopping", icon: "bag-handle", color: "#45B7D1" },
+  { name: "Bills & Utilities", icon: "receipt", color: "#FFA07A" },
+  { name: "Entertainment", icon: "film", color: "#BB8FCE" },
+  { name: "Health", icon: "medical", color: "#58D68D" },
+  { name: "Education", icon: "school", color: "#F7DC6F" },
+  { name: "Other", icon: "ellipsis-horizontal-circle", color: "#ADB5BD" },
+];
+
 export async function initDB() {
   db = await SQLite.openDatabaseAsync("expenses.db");
   await db.execAsync(`
@@ -10,6 +21,13 @@ export async function initDB() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       initial_balance REAL NOT NULL DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      icon TEXT NOT NULL DEFAULT 'ellipsis-horizontal-circle',
+      color TEXT NOT NULL DEFAULT '#ADB5BD',
+      is_default INTEGER NOT NULL DEFAULT 0
     );
     CREATE TABLE IF NOT EXISTS transactions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,14 +41,73 @@ export async function initDB() {
       FOREIGN KEY (transfer_to_account_id) REFERENCES accounts(id)
     );
   `);
+
+  // Migrations — each wrapped in try/catch so re-runs on existing DB are safe
+  try {
+    await db.execAsync(
+      "ALTER TABLE transactions ADD COLUMN category_id INTEGER REFERENCES categories(id)"
+    );
+  } catch {}
+
+  try {
+    await db.execAsync(
+      "ALTER TABLE accounts ADD COLUMN currency TEXT NOT NULL DEFAULT 'EGP'"
+    );
+  } catch {}
+
+  try {
+    await db.execAsync(
+      "ALTER TABLE transactions ADD COLUMN received_amount REAL"
+    );
+  } catch {}
+
   return db;
 }
 
-export async function insertAccount(name, initialBalance) {
+// ─── Categories ────────────────────────────────────────────────────────────
+
+export async function fetchCategories() {
+  return await db.getAllAsync("SELECT * FROM categories ORDER BY is_default DESC, id ASC");
+}
+
+export async function insertCategory(name, icon, color, isDefault = false) {
   const result = await db.runAsync(
-    "INSERT INTO accounts (name, initial_balance) VALUES (?, ?)",
+    "INSERT INTO categories (name, icon, color, is_default) VALUES (?, ?, ?, ?)",
     name,
-    initialBalance
+    icon,
+    color,
+    isDefault ? 1 : 0
+  );
+  return result.lastInsertRowId;
+}
+
+export async function updateCategory(id, name, icon, color) {
+  await db.runAsync(
+    "UPDATE categories SET name = ?, icon = ?, color = ? WHERE id = ?",
+    name,
+    icon,
+    color,
+    id
+  );
+}
+
+export async function deleteCategory(id) {
+  await db.runAsync("DELETE FROM categories WHERE id = ?", id);
+  // Unlink transactions that used this category
+  await db.runAsync(
+    "UPDATE transactions SET category_id = NULL WHERE category_id = ?",
+    id
+  );
+}
+
+// ─── Accounts ──────────────────────────────────────────────────────────────
+
+export async function insertAccount(name, initialBalance, currency = "EGP") {
+  const result = await db.runAsync(
+    "INSERT INTO accounts (name, initial_balance, currency) VALUES (?, ?, ?)",
+    name,
+    initialBalance,
+    currency
   );
   return result.lastInsertRowId;
 }
@@ -39,11 +116,12 @@ export async function fetchAccounts() {
   return await db.getAllAsync("SELECT * FROM accounts ORDER BY id ASC");
 }
 
-export async function updateAccount(id, name, initialBalance) {
+export async function updateAccount(id, name, initialBalance, currency = "EGP") {
   await db.runAsync(
-    "UPDATE accounts SET name = ?, initial_balance = ? WHERE id = ?",
+    "UPDATE accounts SET name = ?, initial_balance = ?, currency = ? WHERE id = ?",
     name,
     initialBalance,
+    currency,
     id
   );
 }
@@ -52,15 +130,19 @@ export async function deleteAccount(id) {
   await db.runAsync("DELETE FROM accounts WHERE id = ?", id);
 }
 
+// ─── Transactions ──────────────────────────────────────────────────────────
+
 export async function insertTransaction(tx) {
   const result = await db.runAsync(
-    "INSERT INTO transactions (type, description, amount, date, account_id, transfer_to_account_id) VALUES (?, ?, ?, ?, ?, ?)",
+    "INSERT INTO transactions (type, description, amount, date, account_id, transfer_to_account_id, category_id, received_amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     tx.type,
     tx.description,
     tx.amount,
     tx.date,
     tx.account_id,
-    tx.transfer_to_account_id || null
+    tx.transfer_to_account_id || null,
+    tx.category_id || null,
+    tx.received_amount ?? null
   );
   return result.lastInsertRowId;
 }
@@ -77,13 +159,15 @@ export async function fetchTransactions() {
 
 export async function updateTransaction(id, tx) {
   await db.runAsync(
-    "UPDATE transactions SET type = ?, description = ?, amount = ?, date = ?, account_id = ?, transfer_to_account_id = ? WHERE id = ?",
+    "UPDATE transactions SET type = ?, description = ?, amount = ?, date = ?, account_id = ?, transfer_to_account_id = ?, category_id = ?, received_amount = ? WHERE id = ?",
     tx.type,
     tx.description,
     tx.amount,
     tx.date,
     tx.account_id,
     tx.transfer_to_account_id || null,
+    tx.category_id || null,
+    tx.received_amount ?? null,
     id
   );
 }

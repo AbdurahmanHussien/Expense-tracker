@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, ScrollView } from "react-native";
+import { useTranslation } from "react-i18next";
 import ExpensesSummary from "./ExpensesSummary";
 import ExpensesList from "./ExpensesList";
 import { useTheme } from "../../store/theme-context";
@@ -7,18 +8,23 @@ function ExpensesOutput({ transactions, expensesPeriod }) {
   const { theme } = useTheme();
   const colors = theme.colors;
   const styles = getStyles(colors);
+  const { t } = useTranslation();
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.scrollView}
+      contentContainerStyle={styles.container}
+      showsVerticalScrollIndicator={false}
+    >
       <ExpensesSummary periodName={expensesPeriod} transactions={transactions} />
       {transactions.length > 0 ? (
         <ExpensesList transactions={transactions} />
       ) : (
         <View style={styles.emptyContainer}>
-          <Text style={styles.infoText}>No transactions found</Text>
+          <Text style={styles.infoText}>{t("summary.noTransactions")}</Text>
         </View>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -26,21 +32,22 @@ export default ExpensesOutput;
 
 const getStyles = (colors) =>
   StyleSheet.create({
-    container: {
-      padding: 24,
-      backgroundColor: colors.gray100,
+    scrollView: {
       flex: 1,
+      backgroundColor: colors.gray100,
+    },
+    container: {
+      padding: 20,
+      paddingBottom: 32,
     },
     emptyContainer: {
-      flex: 1,
-      justifyContent: "center",
       alignItems: "center",
+      marginTop: 64,
     },
     infoText: {
       color: colors.gray500,
       fontSize: 16,
       textAlign: "center",
-      marginTop: 48,
       fontWeight: "500",
     },
   });

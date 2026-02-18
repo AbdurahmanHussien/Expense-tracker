@@ -1,34 +1,46 @@
 import { useState, useEffect, useContext } from "react";
-import { View } from "react-native";
+import { View, useColorScheme } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { NavigationContainer } from "@react-navigation/native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { createStackNavigator, CardStyleInterpolators, TransitionPresets } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { I18nManager } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { I18nextProvider, useTranslation } from "react-i18next";
+import i18n from "./utils/i18n";
 
 import ManageTransaction from "./screens/ManageTransaction";
 import ManageAccount from "./screens/ManageAccount";
+import ManageCategories from "./screens/ManageCategories";
 import RecentExpenses from "./screens/RecentExpenses";
 import AllExpenses from "./screens/AllExpenses";
 import Accounts from "./screens/Accounts";
+import Analytics from "./screens/Analytics";
 
 import IconButton from "./components/UI/IconButton";
 import LoadingOverlay from "./components/UI/LoadingOverlay";
 import AppContextProvider, { AppContext } from "./store/app-context";
 import { ThemeProvider, useTheme } from "./store/theme-context";
+import { LanguageProvider, LANG_STORAGE_KEY } from "./store/language-context";
 import {
   initDB,
   fetchAccounts as fetchAccountsDB,
   fetchTransactions as fetchTransactionsDB,
+  fetchCategories as fetchCategoriesDB,
   insertAccount,
+  insertCategory,
+  DEFAULT_CATEGORIES,
 } from "./utils/database";
 
-const Stack = createNativeStackNavigator();
+const Stack = createStackNavigator();
 const BottomTab = createBottomTabNavigator();
 
 function ExpensesOverview() {
   const { theme } = useTheme();
   const colors = theme.colors;
+  const { t } = useTranslation();
 
   return (
     <BottomTab.Navigator
@@ -71,8 +83,8 @@ function ExpensesOverview() {
         name="RecentExpenses"
         component={RecentExpenses}
         options={{
-          title: "Recent",
-          tabBarLabel: "Recent",
+          title: t("nav.recent"),
+          tabBarLabel: t("nav.recent"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="hourglass" color={color} size={size} />
           ),
@@ -82,19 +94,31 @@ function ExpensesOverview() {
         name="AllExpenses"
         component={AllExpenses}
         options={{
-          title: "All Transactions",
-          tabBarLabel: "All",
+          title: t("nav.all"),
+          tabBarLabel: t("nav.all"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="list" color={color} size={size} />
           ),
         }}
       />
       <BottomTab.Screen
+        name="Analytics"
+        component={Analytics}
+        options={{
+          title: t("nav.analytics"),
+          tabBarLabel: t("nav.analytics"),
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="bar-chart" color={color} size={size} />
+          ),
+          headerRight: null,
+        }}
+      />
+      <BottomTab.Screen
         name="Accounts"
         component={Accounts}
         options={({ navigation }) => ({
-          title: "Accounts",
-          tabBarLabel: "Accounts",
+          title: t("nav.accounts"),
+          tabBarLabel: t("nav.accounts"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="wallet-outline" color={color} size={size} />
           ),
@@ -103,7 +127,7 @@ function ExpensesOverview() {
               <IconButton
                 icon="swap-horizontal"
                 size={24}
-                color={colors.gray800}
+                color={colors.primary200}
                 onPress={() =>
                   navigation.navigate("ManageTransaction", {
                     initialType: "transfer",
@@ -113,7 +137,7 @@ function ExpensesOverview() {
               <IconButton
                 icon="add"
                 size={24}
-                color={colors.gray800}
+                color={colors.primary200}
                 onPress={() => navigation.navigate("ManageAccount")}
               />
             </View>
@@ -124,7 +148,7 @@ function ExpensesOverview() {
   );
 }
 
-function Root() {
+function Root({ initialLanguage }) {
   const [isLoading, setIsLoading] = useState(true);
   const appCtx = useContext(AppContext);
   const { theme } = useTheme();
@@ -133,13 +157,24 @@ function Root() {
   useEffect(() => {
     async function init() {
       await initDB();
+
       let accounts = await fetchAccountsDB();
       if (accounts.length === 0) {
-        const id = await insertAccount("Cash", 0);
-        accounts = [{ id, name: "Cash", initial_balance: 0 }];
+        const id = await insertAccount("Cash", 0, "EGP");
+        accounts = [{ id, name: "Cash", initial_balance: 0, currency: "EGP" }];
       }
+
+      let categories = await fetchCategoriesDB();
+      if (categories.length === 0) {
+        for (const cat of DEFAULT_CATEGORIES) {
+          const id = await insertCategory(cat.name, cat.icon, cat.color, true);
+          categories.push({ id, ...cat, is_default: 1 });
+        }
+      }
+
       const transactions = await fetchTransactionsDB();
       appCtx.setAccounts(accounts);
+      appCtx.setCategories(categories);
       appCtx.setTransactions(transactions);
       setIsLoading(false);
     }
@@ -149,51 +184,98 @@ function Root() {
   if (isLoading) return <LoadingOverlay />;
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator
-        screenOptions={{
-          contentStyle: { backgroundColor: colors.gray100 },
-          headerStyle: {
-            backgroundColor: colors.primary800,
-            elevation: 0,
-            shadowOpacity: 0,
-          },
-          headerTintColor: colors.gray800,
-          headerTitleStyle: {
-            fontWeight: "700",
-            fontSize: 20,
-          },
-        }}
-      >
-        <Stack.Screen
-          name="ExpensesOverview"
-          component={ExpensesOverview}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="ManageTransaction"
-          component={ManageTransaction}
-          options={{ presentation: "modal" }}
-        />
-        <Stack.Screen
-          name="ManageAccount"
-          component={ManageAccount}
-          options={{ presentation: "modal" }}
-        />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <LanguageProvider initialLanguage={initialLanguage}>
+      <NavigationContainer>
+        <Stack.Navigator
+          screenOptions={{
+            cardStyle: { backgroundColor: colors.gray100 },
+            headerStyle: {
+              backgroundColor: colors.primary800,
+              elevation: 0,
+              shadowOpacity: 0,
+            },
+            headerTintColor: colors.gray800,
+            headerTitleStyle: {
+              fontWeight: "700",
+              fontSize: 20,
+            },
+            gestureEnabled: true,
+            cardStyleInterpolator: CardStyleInterpolators.forFadeFromCenter,
+          }}
+        >
+          <Stack.Screen
+            name="ExpensesOverview"
+            component={ExpensesOverview}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="ManageTransaction"
+            component={ManageTransaction}
+            options={{
+              ...TransitionPresets.ModalSlideFromBottomIOS,
+              gestureEnabled: true,
+              gestureDirection: "vertical",
+            }}
+          />
+          <Stack.Screen
+            name="ManageAccount"
+            component={ManageAccount}
+            options={{
+              ...TransitionPresets.ModalSlideFromBottomIOS,
+              gestureEnabled: true,
+              gestureDirection: "vertical",
+            }}
+          />
+          <Stack.Screen
+            name="ManageCategories"
+            component={ManageCategories}
+            options={{
+              ...TransitionPresets.ModalSlideFromBottomIOS,
+              gestureEnabled: true,
+              gestureDirection: "vertical",
+            }}
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </LanguageProvider>
   );
 }
 
+function ThemedStatusBar() {
+  const scheme = useColorScheme();
+  return <StatusBar style={scheme === "dark" ? "light" : "dark"} />;
+}
+
 export default function App() {
+  const [initialLanguage, setInitialLanguage] = useState(null);
+
+  useEffect(() => {
+    async function loadLanguage() {
+      const stored = await AsyncStorage.getItem(LANG_STORAGE_KEY);
+      const lang = stored || "en";
+      // Apply RTL before any screen renders
+      const needsRTL = lang === "ar";
+      if (I18nManager.isRTL !== needsRTL) {
+        I18nManager.forceRTL(needsRTL);
+      }
+      await i18n.changeLanguage(lang);
+      setInitialLanguage(lang);
+    }
+    loadLanguage();
+  }, []);
+
+  if (!initialLanguage) return null;
+
   return (
-    <>
-      <StatusBar style="auto" />
-      <ThemeProvider>
-        <AppContextProvider>
-          <Root />
-        </AppContextProvider>
-      </ThemeProvider>
-    </>
+    <SafeAreaProvider>
+      <ThemedStatusBar />
+      <I18nextProvider i18n={i18n}>
+        <ThemeProvider>
+          <AppContextProvider>
+            <Root initialLanguage={initialLanguage} />
+          </AppContextProvider>
+        </ThemeProvider>
+      </I18nextProvider>
+    </SafeAreaProvider>
   );
 }
