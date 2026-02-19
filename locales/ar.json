@@ -87,6 +87,7 @@
     "deleteAccount": "حذف الحساب",
     "deleteAccountConfirm": "حذف «{{name}}»؟",
     "newAccount": "حساب جديد",
+    "editAccount": "تعديل الحساب",
     "failedSave": "فشل حفظ الحساب",
     "failedDelete": "فشل حذف الحساب"
   },

@@ -87,6 +87,7 @@
     "deleteAccount": "Delete Account",
     "deleteAccountConfirm": "Delete \"{{name}}\"?",
     "newAccount": "New Account",
+    "editAccount": "Edit Account",
     "failedSave": "Failed to save account",
     "failedDelete": "Failed to delete account"
   },

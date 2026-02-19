@@ -2,6 +2,10 @@
 
 A feature-rich **React Native** mobile app for personal finance management. Track expenses, income, and transfers across multiple accounts and currencies — all stored locally on your device with a beautiful, modern UI.
 
+### 📥 Download for Android
+
+**[Download APK](https://drive.google.com/file/d/1ABdgtSyfjprVI68tz3bqgY4cAKy-voK0/view?usp=drive_link)** — Install directly on your Android device.
+
 ---
 
 ## ✨ Features

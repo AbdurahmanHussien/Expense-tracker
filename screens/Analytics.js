@@ -12,11 +12,12 @@ import { useTranslation } from "react-i18next";
 import { useTheme } from "../store/theme-context";
 import { AppContext } from "../store/app-context";
 import { getDateMinusDays } from "../utils/date";
+import { convertToEgp } from "../utils/currency";
 import CategoryChart from "../components/ExpensesOutput/CategoryChart";
 
 export default function Analytics() {
   const [selectedPeriod, setSelectedPeriod] = useState(2);
-  const { transactions, accounts, getAccountBalance } = useContext(AppContext);
+  const { transactions, accounts, getAccountBalance, exchangeRate } = useContext(AppContext);
   const { theme } = useTheme();
   const colors = theme.colors;
   const navigation = useNavigation();
@@ -36,18 +37,26 @@ export default function Analytics() {
     period.days === null
       ? transactions
       : transactions.filter(
-          (tx) => tx.date > getDateMinusDays(new Date(), period.days)
-        );
+        (tx) => tx.date > getDateMinusDays(new Date(), period.days)
+      );
 
   const totalBalance = accounts.reduce(
-    (sum, acc) => sum + getAccountBalance(acc.id),
+    (sum, acc) => sum + convertToEgp(getAccountBalance(acc.id), acc.currency || "EGP", exchangeRate),
     0
   );
   const balancePositive = totalBalance >= 0;
 
-  const income   = filtered.filter((tx) => tx.type === "income" ).reduce((s, tx) => s + tx.amount, 0);
-  const expenses = filtered.filter((tx) => tx.type === "expense").reduce((s, tx) => s + tx.amount, 0);
-  const net      = income - expenses;
+  // Build a lookup so we can resolve each transaction's account currency
+  const accountCurrencyMap = {};
+  accounts.forEach((acc) => { accountCurrencyMap[acc.id] = acc.currency || "EGP"; });
+
+  const income = filtered
+    .filter((tx) => tx.type === "income")
+    .reduce((s, tx) => s + convertToEgp(tx.amount, accountCurrencyMap[tx.account_id] || "EGP", exchangeRate), 0);
+  const expenses = filtered
+    .filter((tx) => tx.type === "expense")
+    .reduce((s, tx) => s + convertToEgp(tx.amount, accountCurrencyMap[tx.account_id] || "EGP", exchangeRate), 0);
+  const net = income - expenses;
   const netPositive = net >= 0;
 
   const hasExpenses = filtered.some(
