@@ -1,6 +1,6 @@
 # 💰 SpendWise — Expense Tracker
 
-A feature-rich **React Native** mobile app for personal finance management. Track expenses, income, and transfers across multiple accounts and currencies — all stored locally on your device with a beautiful, modern UI.
+A feature-rich **React Native** mobile app for personal finance management. Track expenses, income, transfers, subscriptions, and savings goals across multiple accounts and currencies — all stored locally on your device with a beautiful, modern UI.
 
 ---
 
@@ -9,36 +9,35 @@ A feature-rich **React Native** mobile app for personal finance management. Trac
 ### Core Finance
 - **Transactions** — Add, edit, and delete transactions with three types: **expense**, **income**, and **transfer** between accounts.
 - **Multiple Accounts** — Create and manage accounts (Cash, Bank, Savings, etc.) with initial balances and real-time balance calculation.
-- **Multi-Currency Support** — Accounts can hold **EGP** or **USD**. Live exchange rates are fetched from the [Exchange Rate API](https://open.er-api.com/) with a 1-hour cache.
-- **Cross-Currency Transfers** — Transfer between accounts of different currencies with automatic conversion and a separate `received_amount` field.
+- **Multi-Currency Support** — Accounts can hold **EGP** or **USD**. Live exchange rates are fetched dynamically with local caching and offline fallback.
+- **Cross-Currency Transfers** — Transfer between accounts of different currencies with automatic conversion.
+
+### Advanced Tracking & Automation
+- **Recurring Transactions** — Set up daily, weekly, or monthly recurring income/expenses. The app automatically logs them on the due date when you open it.
+- **Bill Reminders** — Keep track of upcoming bills with color-coded urgency (red for due within 2 days) and a quick "Mark Paid" button to instantly log the expense.
+- **Savings Goals** — Create custom savings goals with target amounts, track your progress visually, and celebrate when you hit 100%.
+- **Budgeting** — Set monthly spending limits per category. Enjoy visual progress bars and receive instant push notifications when you approach or exceed your budget.
 
 ### Analytics & Insights
-- **Analytics Dashboard** — Hero card showing total balance with trend indicator, income/expense/net summary cards, and a **category pie chart**.
-- **Period Filter** — View analytics for 7 days, 2 weeks, 1 month, 3 months, or all time.
-- **Category Breakdown** — Visual pie chart showing expense distribution across categories.
+- **Financial Health Score** — A comprehensive 0-100 score evaluating your financial wellness based on your savings rate, budget control, and goals progress, along with personalized tips.
+- **Smart Spending Insights** — Auto-generated actionable insights (e.g., top spending category, month-over-month comparisons, and highest spending day of the week).
+- **Spending Heatmap Calendar** — A visual calendar grid showing your daily spending intensity for the month. Tap any day to see the exact transactions.
+- **Category Breakdown** — Visual pie chart representing expense distribution across categories.
+- **Period Filters** — Analyze data across different timeframes (Current Month, 7 Days, 2 Weeks, All Time, etc.).
 
-### Category Management
-- **8 Default Categories** — Food & Dining, Transport, Shopping, Bills & Utilities, Entertainment, Health, Education, and Other.
-- **Custom Categories** — Create your own categories with a choice of **37 Ionicons** and **18 colors**, with a live preview.
-- **Delete Custom Categories** — Remove user-created categories (default categories are protected).
-
-### Transactions View
-- **Recent Transactions** — Filter by 7 days, 2 weeks, or 1 month with period selector pills.
-- **All Transactions** — Browse the complete transaction history sorted by date.
-- **Transaction Summary** — Color-coded income/expense totals displayed above the list.
+### Categorization & Organization
+- **Custom Categories** — Create your own categories with a choice of **37 Ionicons** and **18 colors**, plus 8 built-in protected default categories.
+- **Transaction History** — Browse "Recent" or "All" transactions with sticky date headers and color-coded income/expense summaries.
 
 ### User Experience
-- **Dark / Light Theme** — Automatically adapts to your system color scheme using the "Indigo Finance" design palette.
-- **Internationalization (i18n)** — Full support for **English** and **Arabic**, including **RTL layout** for Arabic.
-- **Language Selector** — Switch languages from the Accounts tab; Arabic triggers an RTL layout restart prompt.
-- **Smooth Transitions** — Modal slide-from-bottom for creating/editing, fade transitions between screens.
-- **Form Validation** — Inline error messages with visual indicators for invalid inputs.
-- **Loading & Error States** — Full-screen overlays for loading states and error recovery.
+- **Dark / Light Theme** — Beautiful "Indigo Finance" palette that dynamically adapts to your system color scheme.
+- **Full Internationalization (i18n)** — Complete support for **English** and **Arabic**, including automatic **RTL (Right-to-Left) layout reversal**.
+- **Smooth Animations** — Fluid navigation transitions, slide-from-bottom modals, and tactile haptic feedback on interactions.
+- **Push Notifications** — Automated local push notifications for daily reminders and budget alerts.
 
-### Data & Storage
-- **Local-First** — All data persisted in **SQLite** via `expo-sqlite`. No internet required for core functionality.
-- **Auto-Migration** — Database schema evolves gracefully with safe `ALTER TABLE` migrations wrapped in try/catch.
-- **First-Launch Setup** — On first run, a default "Cash" account (EGP, balance 0) and all 8 default categories are created automatically.
+### Data & Architecture
+- **Offline-First SQLite Storage** — Lightning-fast local database (`expo-sqlite`) means no cloud sync delays and complete data privacy.
+- **Auto-Migrations** — Robust local schema management that handles initial data seeding (default categories & account) safely.
 
 ---
 
@@ -46,176 +45,74 @@ A feature-rich **React Native** mobile app for personal finance management. Trac
 
 | Category          | Technology                                     |
 | ----------------- | ---------------------------------------------- |
-| Framework         | React Native 0.81 + Expo SDK 54               |
+| Framework         | React Native 0.81 + Expo SDK 54                |
 | Navigation        | React Navigation 7 (Bottom Tabs + Stack)       |
 | State Management  | React Context API + `useReducer`               |
-| Database          | expo-sqlite (SQLite with WAL mode)             |
-| Internationalization | i18next + react-i18next                     |
-| Icons             | Ionicons (`@expo/vector-icons`)                |
-| Date Picker       | `@react-native-community/datetimepicker`       |
-| Storage           | `@react-native-async-storage/async-storage`    |
-| Theming           | System color scheme detection (`useColorScheme`)|
+| Database          | `expo-sqlite` (SQLite)                         |
+| Internationalization | `i18next` + `react-i18next`                 |
+| Icons / UI        | `@expo/vector-icons` (Ionicons)                |
+| Push Notifications| `expo-notifications`                           |
+| Theming           | System appearance hook + custom ThemeProvider  |
 
 ---
 
-## 📁 Project Structure
+## � Database Schema
 
-```
-Expense-tracker/
-├── App.js                             # Root component, navigation, DB initialization
-├── index.js                           # App entry point
-├── app.json                           # Expo configuration (bundle ID: com.spendwise.app)
-│
-├── screens/
-│   ├── RecentExpenses.js              # Filtered recent transactions (7d / 2w / 1m)
-│   ├── AllExpenses.js                 # Full transaction history
-│   ├── Analytics.js                   # Dashboard: balance hero, stats, category chart
-│   ├── Accounts.js                    # Account list, total balance, language selector
-│   ├── ManageTransaction.js           # Add / edit / delete a transaction
-│   ├── ManageAccount.js               # Add / edit / delete an account (with currency)
-│   └── ManageCategories.js            # View, add, delete categories (icon + color picker)
-│
-├── components/
-│   ├── ManageExpense/
-│   │   ├── ExpenseForm.js             # Full transaction form (type, amount, date, account, category)
-│   │   ├── DatePicker.js              # Date picker component
-│   │   └── Input.js                   # Reusable text input with validation
-│   ├── ExpensesOutput/
-│   │   ├── ExpensesOutput.js          # Transaction list container with summary
-│   │   ├── ExpensesSummary.js         # Income / expense totals summary card
-│   │   ├── ExpensesList.js            # FlatList wrapper for transactions
-│   │   ├── ExpenseItem.js             # Single transaction row (icon, category, amount)
-│   │   └── CategoryChart.js           # Pie chart for category-wise expense breakdown
-│   └── UI/
-│       ├── Button.js                  # Reusable styled button (solid / flat)
-│       ├── IconButton.js              # Icon-only pressable button
-│       ├── Picker.js                  # Custom dropdown picker
-│       ├── LanguageSelector.js        # Language switch component (EN ↔ AR)
-│       ├── LoadingOverlay.js          # Full-screen loading spinner
-│       └── ErrorOverlay.js            # Full-screen error with retry
-│
-├── store/
-│   ├── app-context.js                 # Transactions, accounts, categories, exchange rate state
-│   ├── theme-context.js               # Auto dark/light theme provider
-│   └── language-context.js            # Language state + RTL management
-│
-├── utils/
-│   ├── database.js                    # SQLite init, migrations, CRUD operations
-│   ├── currency.js                    # Exchange rate fetching, currency conversion
-│   ├── date.js                        # Date formatting & arithmetic helpers
-│   └── i18n.js                        # i18next initialization & configuration
-│
-├── constants/
-│   └── styles.js                      # "Indigo Finance" theme — light & dark color palettes
-│
-├── locales/
-│   ├── en.json                        # English translations
-│   └── ar.json                        # Arabic translations
-│
-└── assets/                            # App icon, adaptive icon, splash screen, favicon
-```
+Powered by 7 SQLite tables with automatic migrations on startup:
 
----
-
-## 🗺 Navigation
-
-```
-Bottom Tab Navigator
-├── Recent    (hourglass icon)   → RecentExpenses screen
-├── All       (list icon)        → AllExpenses screen
-├── Analytics (bar-chart icon)   → Analytics screen
-└── Accounts  (wallet icon)      → Accounts screen
-
-Stack Navigator (modals)
-├── ManageTransaction   → slide-from-bottom modal
-├── ManageAccount       → slide-from-bottom modal
-└── ManageCategories    → slide-from-bottom modal
-```
-
----
-
-## 🗃 Database Schema
-
-Three SQLite tables with automatic migrations:
-
-| Table            | Key Columns                                                                           |
-| ---------------- | ------------------------------------------------------------------------------------- |
-| `accounts`       | `id`, `name`, `initial_balance`, `currency` (EGP / USD)                              |
-| `transactions`   | `id`, `type` (expense/income/transfer), `description`, `amount`, `date`, `account_id`, `transfer_to_account_id`, `category_id`, `received_amount` |
-| `categories`     | `id`, `name`, `icon`, `color`, `is_default`                                          |
+| Table                    | Key Columns                                                                           |
+| ------------------------ | ------------------------------------------------------------------------------------- |
+| `accounts`               | `id`, `name`, `initial_balance`, `currency` (EGP / USD)                               |
+| `transactions`           | `id`, `type`, `description`, `amount`, `date`, `account_id`, `category_id`...         |
+| `categories`             | `id`, `name`, `icon`, `color`, `is_default`                                           |
+| `budgets`                | `id`, `category_id`, `monthly_limit`                                                  |
+| `savings_goals`          | `id`, `name`, `target_amount`, `saved_amount`, `deadline`, `icon`, `color`            |
+| `recurring_transactions` | `id`, `type`, `amount`, `frequency`, `next_due`, `is_active`                          |
+| `bill_reminders`         | `id`, `name`, `amount`, `due_day`, `icon`, `color`, `is_active`                       |
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-
 - [Node.js](https://nodejs.org/) v18 or later
 - [Expo CLI](https://docs.expo.dev/get-started/installation/)
 - Android emulator, iOS simulator, or **Expo Go** on a physical device
 
 ### Installation
-
 ```bash
-# Navigate to the project directory
-cd Expense-tracker
+# Clone and navigate to the project directory
+git clone https://github.com/yourusername/expense-tracker.git
+cd expense-tracker
 
 # Install dependencies
 npm install
 ```
 
 ### Running the App
-
 ```bash
 # Start the Expo development server
 npx expo start
 ```
-
-Then press:
-- **a** — open on Android emulator
-- **i** — open on iOS simulator
-- **Scan QR** — open with Expo Go on your phone
+Then press **a** (Android), **i** (iOS), or scan the QR code with **Expo Go**.
 
 ### Building for Production
-
 ```bash
-# Android APK / AAB
 npx expo run:android
-
-# iOS
 npx expo run:ios
 ```
 
 ---
 
 ## 🎨 Design System — "Indigo Finance"
+The app uses a custom modern fintech palette:
 
-The app uses a custom **Indigo Finance** color palette inspired by modern fintech apps (Linear, Vercel, Revolut, N26):
-
-| Token               | Light Mode          | Dark Mode           |
-| -------------------- | ------------------- | ------------------- |
-| Primary              | `#4F46E5` (Indigo)  | `#6366F1` (Indigo)  |
-| Income               | `#059669` (Emerald) | `#34D399` (Emerald) |
-| Expense              | `#DC2626` (Red)     | `#F87171` (Red)     |
-| Transfer             | `#7C3AED` (Violet)  | `#A78BFA` (Violet)  |
-| Background           | `#F1F5F9` (Slate)   | `#13121F` (Deep Indigo) |
-| Surface              | `#FFFFFF`           | `#1C1B2E`           |
-
----
-
-## 🔄 How It Works
-
-1. **First launch** — The database initializes, creates a default "Cash" account (EGP, ₹0), and seeds 8 default categories.
-2. **Add accounts** — Create accounts for different wallets or banks, choose EGP or USD currency.
-3. **Record transactions** — Pick a type (expense/income/transfer), enter amount, select date, choose account and category.
-4. **Cross-currency transfers** — When transferring between accounts with different currencies, the exchange rate is fetched and conversion is applied automatically.
-5. **View analytics** — The Analytics tab shows total balance, income vs. expenses for a selected period, and a category breakdown chart.
-6. **Manage categories** — Add custom categories from the Analytics tab with your choice of icon and color.
-7. **Switch language** — Toggle between English and Arabic from the Accounts tab. Arabic activates RTL layout.
-8. **Balances update live** — Account balances are derived in real-time from the initial balance plus all associated transactions.
+- **Primary:** `#6366F1` (Indigo)
+- **Income (Positive):** `#34D399` (Emerald)
+- **Expense (Negative):** `#F87171` (Red)
+- **Surfaces:** Clean whites `#FFFFFF` and deep slates `#1C1B2E` for Dark Mode.
 
 ---
 
 ## 📄 License
-
-This project is for educational purposes as part of a React Native course.
+This project is open-source and available for educational purposes.

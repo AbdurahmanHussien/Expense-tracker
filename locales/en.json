@@ -23,7 +23,8 @@
     "update": "Update",
     "add": "Add",
     "ok": "OK",
-    "language": "Language"
+    "language": "Language",
+    "error": "Error"
   },
   "recent": {
     "7days": "7 Days",
@@ -32,7 +33,10 @@
     "last": "Last {{period}}"
   },
   "all": {
-    "total": "Total"
+    "total": "Total",
+    "export": "Export CSV",
+    "exportSuccess": "Export successful!",
+    "exportError": "Failed to export data."
   },
   "summary": {
     "totalBalance": "Total Balance",
@@ -40,7 +44,8 @@
     "negative": "Negative",
     "income": "Income",
     "expenses": "Expenses",
-    "noTransactions": "No transactions found"
+    "noTransactions": "No transactions found",
+    "noTransactionsHint": "Tap + to add your first transaction"
   },
   "form": {
     "expense": "Expense",
@@ -74,6 +79,8 @@
   "accounts": {
     "totalBalanceEgp": "Total Balance (EGP)",
     "fetchRate": "Fetch Rate",
+    "rateStale": "Rate may be outdated — tap to refresh",
+    "rateUnavailable": "Rate unavailable — tap to retry",
     "noAccounts": "No accounts yet",
     "noAccountsHint": "Tap + to create your first account",
     "accountName": "Account Name",
@@ -87,8 +94,10 @@
     "deleteAccount": "Delete Account",
     "deleteAccountConfirm": "Delete \"{{name}}\"?",
     "newAccount": "New Account",
+    "editAccount": "Edit Account",
     "failedSave": "Failed to save account",
-    "failedDelete": "Failed to delete account"
+    "failedDelete": "Failed to delete account",
+    "dangerZone": "Danger Zone"
   },
   "categories": {
     "default": "Default",
@@ -115,11 +124,10 @@
     "noExpensesYet": " yet",
     "categoriseHint": "Assign categories to your transactions to see the breakdown here",
     "manageCategories": "Manage Categories",
-    "period7d": "7D",
-    "period2w": "2W",
-    "period1m": "1M",
-    "period3m": "3M",
-    "periodAll": "All"
+    "spendingByCategory": "Spending by Category",
+    "periodThisMonth": "Current Month",
+    "period7d": "7 Days",
+    "period2w": "2 Weeks"
   },
   "language": {
     "selectLanguage": "Select Language",
@@ -127,5 +135,142 @@
     "restartMsg": "Please restart the app to apply the language change.",
     "english": "English",
     "arabic": "Arabic"
+  },
+  "notifications": {
+    "reminderTitle": "Track your spending 💰",
+    "reminderBody": "Don't forget to log your expenses in Spend Wise!",
+    "budgetWarning80Title": "Approaching Budget ⚠️",
+    "budgetWarning80Body": "You've reached {{percent}}% of your {{category}} budget.",
+    "budgetWarning100Title": "Budget Exceeded 🚨",
+    "budgetWarning100Body": "You've exceeded your {{category}} budget by {{amount}}!"
+  },
+  "search": {
+    "placeholder": "Search transactions...",
+    "all": "All",
+    "results": "{{count}} results",
+    "clearAll": "Clear All"
+  },
+  "list": {
+    "today": "Today",
+    "yesterday": "Yesterday"
+  },
+  "budget": {
+    "limit": "Budget",
+    "monthlyBudget": "Monthly Budget (optional)",
+    "budgetPlaceholder": "e.g. 500",
+    "setBudget": "Set Budget",
+    "clearHint": "Leave empty to remove budget limit"
+  },
+  "monthly": {
+    "title": "Monthly Report",
+    "yearSummary": "Year Summary",
+    "vsLastMonth": "vs Last Month",
+    "inExpenses": "in expenses",
+    "monthlyBreakdown": "Monthly Breakdown",
+    "details": "Month Details"
+  },
+  "security": {
+    "appLock": "App Lock",
+    "appLockDesc": "Require biometrics to open",
+    "unlockPrompt": "Authenticate to unlock Spend Wise",
+    "unlockSecondaryPrompt": "Scan your fingerprint or face to proceed",
+    "unlockButton": "Unlock App",
+    "notSupported": "Biometrics not supported on this device"
+  },
+  "database": {
+    "title": "Database",
+    "backup": "Export Backup",
+    "backupDesc": "Save your data as a .db file",
+    "restore": "Restore Backup",
+    "restoreDesc": "Import a previously saved .db file",
+    "restoreConfirmTitle": "Restore Data?",
+    "restoreConfirmMsg": "This will overwrite all your current data with the imported file. The app will restart. Continue?",
+    "restoreSuccess": "Database restored! Please restart the app completely.",
+    "invalidFile": "Invalid file selected. Must be a .db file.",
+    "errorTitle": "Error",
+    "errorMsg": "An error occurred while handling the database."
+  },
+  "goals": {
+    "title": "Savings Goals",
+    "addGoal": "Add Goal",
+    "editGoal": "Edit Goal",
+    "newGoal": "New Goal",
+    "deleteGoal": "Delete Goal",
+    "deleteGoalMsg": "Delete \"{{name}}\"? This cannot be undone.",
+    "target": "Target Amount (EGP)",
+    "saved": "Saved So Far (EGP)",
+    "deadline": "Deadline (optional)",
+    "deadlinePlaceholder": "e.g. 2026-06-01",
+    "namePlaceholder": "e.g. New Phone, Vacation",
+    "noGoals": "No savings goals yet",
+    "noGoalsHint": "Tap + to set your first savings goal",
+    "achieved": "Goal achieved! 🎉",
+    "progress": "{{percent}}% of target"
+  },
+  "recurring": {
+    "title": "Recurring Transactions",
+    "add": "Add Recurring",
+    "new": "New Recurring",
+    "edit": "Edit Recurring",
+    "delete": "Delete Recurring",
+    "deleteMsg": "Delete \"{{name}}\"? This cannot be undone.",
+    "noItems": "No recurring transactions",
+    "noItemsHint": "Tap + to automate your regular transactions",
+    "frequency": "Frequency",
+    "freq_daily": "Daily",
+    "freq_weekly": "Weekly",
+    "freq_monthly": "Monthly",
+    "dueIn": "Due in {{days}}d",
+    "dueToday": "Due today!",
+    "loggedAuto": "{{count}} recurring transaction(s) logged automatically"
+  },
+  "bills": {
+    "title": "Bill Reminders",
+    "heroTitle": "Upcoming Bills",
+    "heroSub": "{{count}} bills tracked",
+    "add": "Add Bill",
+    "new": "New Bill",
+    "edit": "Edit Bill",
+    "delete": "Delete Bill",
+    "deleteMsg": "Delete \"{{name}}\"?",
+    "noItems": "No bills added",
+    "noItemsHint": "Tap + to track your recurring bills",
+    "namePlaceholder": "e.g. Electricity, Rent, Netflix",
+    "amount": "Amount",
+    "optional": "optional",
+    "dueDayLabel": "Due Day of Month",
+    "dueEvery": "Due every {{day}} of the month",
+    "dueIn": "{{days}}d",
+    "dueToday": "Today!",
+    "markPaid": "Mark as Paid?",
+    "markPaidMsg": "Log \"{{name}}\" as an expense today?",
+    "confirm": "Confirm"
+  },
+  "insights": {
+    "title": "Spending Insights",
+    "topCategory": "Top spend: {{name}} ({{amount}})",
+    "momChange": "You spent {{pct}}% {{dir}} on expenses than last month",
+    "more": "more",
+    "less": "less",
+    "topDay": "You tend to spend most on {{day}}s",
+    "budgetNear": "{{name}} budget is at {{pct}}% — watch your spending",
+    "budgetOver": "You've exceeded your {{name}} budget this month",
+    "healthTitle": "Financial Health",
+    "scoreExcellent": "Excellent 🟢",
+    "scoreGood": "Good 🟡",
+    "scoreNeedsWork": "Needs Work 🔴",
+    "pillarSavings": "Savings Rate",
+    "pillarBudget": "Budget Control",
+    "pillarGoals": "Goals Progress",
+    "tipSavings": "Save more by reducing this month's expenses — aim for at least 20% savings rate.",
+    "tipBudget": "You're close to or over budget in some categories. Try reviewing your spending.",
+    "tipGoals": "Set or contribute to savings goals to improve your financial health score."
+  },
+  "heatmap": {
+    "title": "Daily Spending",
+    "low": "Low",
+    "high": "High",
+    "noData": "No expenses this month",
+    "noExpenses": "No expenses on this day"
   }
 }

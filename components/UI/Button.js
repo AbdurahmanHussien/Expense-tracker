@@ -27,14 +27,14 @@ export default Button;
 const getStyles = (colors) =>
   StyleSheet.create({
     button: {
-      borderRadius: 12,
-      padding: 14,
+      borderRadius: 16,
+      padding: 16,
       backgroundColor: colors.primary500,
-      elevation: 2,
-      shadowColor: "#000",
-      shadowRadius: 4,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.2,
+      elevation: 4,
+      shadowColor: colors.primary500,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
     },
     flat: {
       backgroundColor: "transparent",
@@ -45,14 +45,15 @@ const getStyles = (colors) =>
       color: "white",
       textAlign: "center",
       fontSize: 16,
-      fontWeight: "600",
+      fontWeight: "700",
+      letterSpacing: 0.2,
     },
     flatText: {
       color: colors.gray700,
     },
     pressed: {
-      opacity: 0.8,
-      backgroundColor: colors.primary400,
-      borderRadius: 12,
+      opacity: 0.85,
+      borderRadius: 16,
+      transform: [{ scale: 0.98 }],
     },
   });

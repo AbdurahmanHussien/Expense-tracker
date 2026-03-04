@@ -1,6 +1,6 @@
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { View, Text, StyleSheet, Pressable, Animated } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { useContext } from "react";
+import { useContext, useRef } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../store/theme-context";
 import { getFormattedDate } from "../../utils/date";
@@ -20,26 +20,24 @@ function ExpenseItem({
   const { accounts, categories } = useContext(AppContext);
   const { theme } = useTheme();
   const colors = theme.colors;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const TYPE_CONFIG = {
     expense: {
       icon: "arrow-up",
       color: colors.expenseColor,
-      borderColor: colors.expenseColor,
       bgColor: colors.expenseBg,
       prefix: "-",
     },
     income: {
       icon: "arrow-down",
       color: colors.incomeColor,
-      borderColor: colors.incomeColor,
       bgColor: colors.incomeBg,
       prefix: "+",
     },
     transfer: {
       icon: "swap-horizontal",
       color: colors.transfer500,
-      borderColor: colors.transfer500,
       bgColor: colors.primary100,
       prefix: "",
     },
@@ -58,28 +56,47 @@ function ExpenseItem({
     ? categories.find((c) => c.id === category_id)
     : null;
 
+  function onPressIn() {
+    Animated.spring(scaleAnim, {
+      toValue: 0.97,
+      useNativeDriver: true,
+      friction: 8,
+    }).start();
+  }
+
+  function onPressOut() {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      friction: 6,
+    }).start();
+  }
+
   function pressHandler() {
     navigation.navigate("ManageTransaction", { transactionId: id });
   }
 
   return (
     <Pressable
-      style={({ pressed }) => pressed && styles.pressed}
       onPress={pressHandler}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
     >
-      <View style={[styles.item, { borderLeftColor: config.borderColor }]}>
+      <Animated.View
+        style={[styles.item, { transform: [{ scale: scaleAnim }] }]}
+      >
+        {/* Accent dot */}
+        <View style={[styles.accentDot, { backgroundColor: config.color }]} />
+
         <View style={styles.leftSection}>
           <View
             style={[styles.iconCircle, { backgroundColor: config.bgColor }]}
           >
-            <Ionicons name={config.icon} size={20} color={config.color} />
+            <Ionicons name={config.icon} size={22} color={config.color} />
           </View>
           <View style={styles.textSection}>
             <Text style={styles.description} numberOfLines={1}>
               {description}
-            </Text>
-            <Text style={styles.meta} numberOfLines={1}>
-              {getFormattedDate(date)}
             </Text>
             <View style={styles.metaRow}>
               <View
@@ -106,7 +123,7 @@ function ExpenseItem({
                 <View
                   style={[
                     styles.categoryBadge,
-                    { backgroundColor: category.color + "26" },
+                    { backgroundColor: category.color + "18" },
                   ]}
                 >
                   <Ionicons
@@ -128,15 +145,14 @@ function ExpenseItem({
             </View>
           </View>
         </View>
-        <View
-          style={[styles.amountContainer, { backgroundColor: config.bgColor }]}
-        >
+        <View style={styles.rightSection}>
           <Text style={[styles.amount, { color: config.color }]}>
             {config.prefix}
-            {amount.toFixed(2)} {accountCurrency}
+            {amount.toFixed(2)}
           </Text>
+          <Text style={styles.currency}>{accountCurrency}</Text>
         </View>
-      </View>
+      </Animated.View>
     </Pressable>
   );
 }
@@ -146,22 +162,27 @@ export default ExpenseItem;
 const getStyles = (colors) =>
   StyleSheet.create({
     item: {
-      padding: 16,
-      marginVertical: 5,
-      marginHorizontal: 4,
-      backgroundColor: colors.surface,
       flexDirection: "row",
-      justifyContent: "space-between",
       alignItems: "center",
-      borderRadius: 16,
+      backgroundColor: colors.surface,
+      borderRadius: 18,
+      padding: 14,
+      paddingLeft: 12,
+      marginVertical: 4,
+      marginHorizontal: 2,
       borderWidth: 1,
       borderColor: colors.border,
-      elevation: 2,
+      elevation: 1,
       shadowColor: "#000",
-      shadowRadius: 4,
+      shadowRadius: 6,
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.06,
-      borderLeftWidth: 4,
+      shadowOpacity: 0.04,
+    },
+    accentDot: {
+      width: 4,
+      height: 36,
+      borderRadius: 2,
+      marginRight: 12,
     },
     leftSection: {
       flexDirection: "row",
@@ -170,31 +191,27 @@ const getStyles = (colors) =>
       gap: 12,
     },
     iconCircle: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+      width: 46,
+      height: 46,
+      borderRadius: 15,
       justifyContent: "center",
       alignItems: "center",
     },
     textSection: {
       flex: 1,
+      gap: 4,
     },
     description: {
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: "600",
       color: colors.gray800,
-      marginBottom: 4,
+      letterSpacing: -0.2,
     },
     metaRow: {
       flexDirection: "row",
       alignItems: "center",
       flexWrap: "wrap",
-      gap: 6,
-    },
-    meta: {
-      fontSize: 12,
-      color: colors.gray500,
-      marginBottom: 4,
+      gap: 5,
     },
     accountBadge: {
       flexDirection: "row",
@@ -202,39 +219,39 @@ const getStyles = (colors) =>
       gap: 3,
       paddingHorizontal: 7,
       paddingVertical: 3,
-      borderRadius: 6,
+      borderRadius: 8,
     },
     accountBadgeText: {
-      fontSize: 11,
+      fontSize: 10,
       fontWeight: "700",
-      maxWidth: 120,
+      maxWidth: 110,
     },
     categoryBadge: {
       flexDirection: "row",
       alignItems: "center",
       gap: 3,
       paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 6,
+      paddingVertical: 3,
+      borderRadius: 8,
     },
     categoryBadgeText: {
       fontSize: 10,
       fontWeight: "700",
       maxWidth: 80,
     },
-    amountContainer: {
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 12,
-      minWidth: 85,
-      alignItems: "center",
+    rightSection: {
+      alignItems: "flex-end",
+      marginLeft: 8,
     },
     amount: {
-      fontWeight: "600",
-      fontSize: 14,
+      fontWeight: "700",
+      fontSize: 15,
+      letterSpacing: -0.3,
     },
-    pressed: {
-      opacity: 0.7,
-      transform: [{ scale: 0.98 }],
+    currency: {
+      fontSize: 10,
+      fontWeight: "600",
+      color: colors.gray500,
+      marginTop: 1,
     },
   });

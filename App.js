@@ -10,6 +10,7 @@ import { I18nManager } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { I18nextProvider, useTranslation } from "react-i18next";
 import i18n from "./utils/i18n";
+import { setupReminderNotification } from "./utils/notifications";
 
 import ManageTransaction from "./screens/ManageTransaction";
 import ManageAccount from "./screens/ManageAccount";
@@ -18,9 +19,14 @@ import RecentExpenses from "./screens/RecentExpenses";
 import AllExpenses from "./screens/AllExpenses";
 import Accounts from "./screens/Accounts";
 import Analytics from "./screens/Analytics";
+import MonthlyReport from "./screens/MonthlyReport";
+import SavingsGoals from "./screens/SavingsGoals";
+import RecurringTransactions, { advanceDate } from "./screens/RecurringTransactions";
+import BillReminders from "./screens/BillReminders";
 
 import IconButton from "./components/UI/IconButton";
 import LoadingOverlay from "./components/UI/LoadingOverlay";
+import SecurityWrapper from "./components/UI/SecurityWrapper";
 import AppContextProvider, { AppContext } from "./store/app-context";
 import { ThemeProvider, useTheme } from "./store/theme-context";
 import { LanguageProvider, LANG_STORAGE_KEY } from "./store/language-context";
@@ -29,6 +35,12 @@ import {
   fetchAccounts as fetchAccountsDB,
   fetchTransactions as fetchTransactionsDB,
   fetchCategories as fetchCategoriesDB,
+  fetchBudgets as fetchBudgetsDB,
+  fetchGoals as fetchGoalsDB,
+  fetchRecurring as fetchRecurringDB,
+  fetchBills as fetchBillsDB,
+  insertTransaction,
+  updateRecurringNextDue,
   insertAccount,
   insertCategory,
   DEFAULT_CATEGORIES,
@@ -57,17 +69,26 @@ function ExpensesOverview() {
         },
         tabBarStyle: {
           backgroundColor: colors.surface,
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
-          elevation: 0,
-          height: 70,
-          paddingTop: 1,
+          borderTopWidth: 0,
+          elevation: 12,
+          shadowColor: "#000",
+          shadowRadius: 16,
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.08,
+          height: 64,
+          paddingTop: 4,
+          paddingBottom: 8,
+          marginHorizontal: 12,
+          marginBottom: 10,
+          borderRadius: 20,
+          position: "absolute",
         },
         tabBarActiveTintColor: colors.primary400,
         tabBarInactiveTintColor: colors.gray500,
         tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: "600",
+          fontSize: 11,
+          fontWeight: "700",
+          letterSpacing: 0.2,
         },
         headerRight: () => (
           <IconButton
@@ -173,10 +194,56 @@ function Root({ initialLanguage }) {
       }
 
       const transactions = await fetchTransactionsDB();
+      const budgets = await fetchBudgetsDB();
+      const goals = await fetchGoalsDB();
+      const recurring = await fetchRecurringDB();
+      const bills = await fetchBillsDB();
+
       appCtx.setAccounts(accounts);
       appCtx.setCategories(categories);
       appCtx.setTransactions(transactions);
+      appCtx.setBudgets(budgets);
+      appCtx.setGoals(goals);
+      appCtx.setRecurring(recurring);
+      appCtx.setBills(bills);
+
+      // Auto-log overdue recurring transactions
+      const today = new Date().toISOString().slice(0, 10);
+      let autoLogged = 0;
+      for (const r of recurring) {
+        if (!r.is_active || r.next_due > today) continue;
+        try {
+          const txData = {
+            type: r.type, description: r.description, amount: r.amount,
+            account_id: r.account_id,
+            transfer_to_account_id: r.transfer_to_account_id || null,
+            category_id: r.category_id || null,
+            received_amount: null,
+            date: today,
+          };
+          const newId = await insertTransaction(txData);
+          appCtx.addTransaction({ ...txData, id: newId, date: new Date(today) });
+          const nextDue = advanceDate(today, r.frequency);
+          await updateRecurringNextDue(r.id, nextDue);
+          appCtx.updateRecurringLocal(r.id, { next_due: nextDue });
+          autoLogged++;
+        } catch (e) { console.warn("Recurring log failed", e); }
+      }
+
+      const hasMultiCurrency = accounts.some(
+        (a) => (a.currency || "EGP") !== "EGP"
+      );
+      if (hasMultiCurrency) {
+        appCtx.refreshExchangeRate();
+      }
+
       setIsLoading(false);
+
+      // Schedule 12-hour reminder notification
+      setupReminderNotification(
+        i18n.t("notifications.reminderTitle"),
+        i18n.t("notifications.reminderBody")
+      );
     }
     init();
   }, []);
@@ -185,58 +252,96 @@ function Root({ initialLanguage }) {
 
   return (
     <LanguageProvider initialLanguage={initialLanguage}>
-      <NavigationContainer>
-        <Stack.Navigator
-          screenOptions={{
-            cardStyle: { backgroundColor: colors.gray100 },
-            headerStyle: {
-              backgroundColor: colors.primary800,
-              elevation: 0,
-              shadowOpacity: 0,
-            },
-            headerTintColor: colors.gray800,
-            headerTitleStyle: {
-              fontWeight: "700",
-              fontSize: 20,
-            },
-            gestureEnabled: true,
-            cardStyleInterpolator: CardStyleInterpolators.forFadeFromCenter,
-          }}
-        >
-          <Stack.Screen
-            name="ExpensesOverview"
-            component={ExpensesOverview}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="ManageTransaction"
-            component={ManageTransaction}
-            options={{
-              ...TransitionPresets.ModalSlideFromBottomIOS,
+      <SecurityWrapper>
+        <NavigationContainer>
+          <Stack.Navigator
+            screenOptions={{
+              cardStyle: { backgroundColor: colors.gray100 },
+              headerStyle: {
+                backgroundColor: colors.primary800,
+                elevation: 0,
+                shadowOpacity: 0,
+              },
+              headerTintColor: colors.gray800,
+              headerTitleStyle: {
+                fontWeight: "700",
+                fontSize: 20,
+              },
               gestureEnabled: true,
-              gestureDirection: "vertical",
+              cardStyleInterpolator: CardStyleInterpolators.forFadeFromCenter,
             }}
-          />
-          <Stack.Screen
-            name="ManageAccount"
-            component={ManageAccount}
-            options={{
-              ...TransitionPresets.ModalSlideFromBottomIOS,
-              gestureEnabled: true,
-              gestureDirection: "vertical",
-            }}
-          />
-          <Stack.Screen
-            name="ManageCategories"
-            component={ManageCategories}
-            options={{
-              ...TransitionPresets.ModalSlideFromBottomIOS,
-              gestureEnabled: true,
-              gestureDirection: "vertical",
-            }}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
+          >
+            <Stack.Screen
+              name="ExpensesOverview"
+              component={ExpensesOverview}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ManageTransaction"
+              component={ManageTransaction}
+              options={{
+                ...TransitionPresets.ModalSlideFromBottomIOS,
+                gestureEnabled: true,
+                gestureDirection: "vertical",
+              }}
+            />
+            <Stack.Screen
+              name="ManageAccount"
+              component={ManageAccount}
+              options={{
+                ...TransitionPresets.ModalSlideFromBottomIOS,
+                gestureEnabled: true,
+                gestureDirection: "vertical",
+              }}
+            />
+            <Stack.Screen
+              name="ManageCategories"
+              component={ManageCategories}
+              options={{
+                ...TransitionPresets.ModalSlideFromBottomIOS,
+                gestureEnabled: true,
+                gestureDirection: "vertical",
+              }}
+            />
+            <Stack.Screen
+              name="MonthlyReport"
+              component={MonthlyReport}
+              options={{
+                ...TransitionPresets.ModalSlideFromBottomIOS,
+                gestureEnabled: true,
+                gestureDirection: "vertical",
+              }}
+            />
+            <Stack.Screen
+              name="SavingsGoals"
+              component={SavingsGoals}
+              options={{
+                ...TransitionPresets.ModalSlideFromBottomIOS,
+                gestureEnabled: true,
+                gestureDirection: "vertical",
+              }}
+            />
+            <Stack.Screen
+              name="RecurringTransactions"
+              component={RecurringTransactions}
+              options={{
+                ...TransitionPresets.ModalSlideFromBottomIOS,
+                gestureEnabled: true,
+                gestureDirection: "vertical",
+              }}
+            />
+            <Stack.Screen
+              name="BillReminders"
+              component={BillReminders}
+              options={{
+                ...TransitionPresets.ModalSlideFromBottomIOS,
+                gestureEnabled: true,
+                gestureDirection: "vertical",
+              }}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </SecurityWrapper>
     </LanguageProvider>
   );
 }

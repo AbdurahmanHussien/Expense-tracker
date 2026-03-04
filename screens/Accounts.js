@@ -10,10 +10,13 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { LinearGradient } from "expo-linear-gradient";
 import { AppContext } from "../store/app-context";
 import { useTheme } from "../store/theme-context";
 import { convertToEgp } from "../utils/currency";
 import LanguageSelector from "../components/UI/LanguageSelector";
+import SecurityToggle from "../components/UI/SecurityToggle";
+import DatabaseBackup from "../components/UI/DatabaseBackup";
 
 function Accounts() {
   const navigation = useNavigation();
@@ -22,11 +25,16 @@ function Accounts() {
     getAccountBalance,
     exchangeRate,
     exchangeRateLoading,
+    exchangeRateError,
     refreshExchangeRate,
   } = useContext(AppContext);
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const colors = theme.colors;
   const { t } = useTranslation();
+
+  const gradientColors = isDark
+    ? ["#4338CA", "#6366F1", "#7C3AED"]
+    : ["#4F46E5", "#6366F1", "#8B5CF6"];
 
   const hasMultiCurrency = accounts.some(
     (a) => (a.currency || "EGP") !== "EGP",
@@ -36,7 +44,7 @@ function Accounts() {
     if (hasMultiCurrency && !exchangeRate) {
       refreshExchangeRate();
     }
-  }, [hasMultiCurrency]);
+  }, [hasMultiCurrency, refreshExchangeRate]);
 
   const totalBalanceEgp = accounts.reduce((sum, acc) => {
     const balance = getAccountBalance(acc.id);
@@ -67,7 +75,7 @@ function Accounts() {
             style={[styles.iconContainer, isUsd && styles.iconContainerUsd]}
           >
             <Ionicons
-              name="wallet"
+              name={isUsd ? "card" : "wallet"}
               size={24}
               color={isUsd ? colors.error500 : colors.primary400}
             />
@@ -107,7 +115,14 @@ function Accounts() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.totalCard}>
+      <LinearGradient
+        colors={gradientColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.totalCard}
+      >
+        <View style={styles.heroDecor1} />
+        <View style={styles.heroDecor2} />
         <Text style={styles.totalLabel}>{t("accounts.totalBalanceEgp")}</Text>
         {hasMultiCurrency && exchangeRateLoading ? (
           <ActivityIndicator
@@ -131,7 +146,16 @@ function Accounts() {
             <Text style={styles.rateRetryText}>{t("accounts.fetchRate")}</Text>
           </Pressable>
         )}
-      </View>
+        {/* Stale / failed rate warning */}
+        {hasMultiCurrency && exchangeRateError && !exchangeRateLoading && (
+          <Pressable onPress={refreshExchangeRate} style={styles.rateWarningBtn}>
+            <Ionicons name="warning-outline" size={14} color="#F59E0B" />
+            <Text style={styles.rateWarningText}>
+              {exchangeRate ? t("accounts.rateStale") : t("accounts.rateUnavailable")}
+            </Text>
+          </Pressable>
+        )}
+      </LinearGradient>
 
       {accounts.length > 0 ? (
         <FlatList
@@ -141,6 +165,10 @@ function Accounts() {
           contentContainerStyle={styles.list}
           ListFooterComponent={
             <View style={styles.settingsSection}>
+              <Text style={styles.sectionTitle}>{t("database.title")}</Text>
+              <DatabaseBackup />
+              <Text style={styles.sectionTitle}>{t("nav.accounts")}</Text>
+              <SecurityToggle />
               <LanguageSelector />
             </View>
           }
@@ -150,6 +178,10 @@ function Accounts() {
           <Text style={styles.emptyText}>{t("accounts.noAccounts")}</Text>
           <Text style={styles.emptySubText}>{t("accounts.noAccountsHint")}</Text>
           <View style={styles.settingsSectionEmpty}>
+            <Text style={styles.sectionTitle}>{t("database.title")}</Text>
+            <DatabaseBackup />
+            <Text style={styles.sectionTitle}>{t("nav.accounts")}</Text>
+            <SecurityToggle />
             <LanguageSelector />
           </View>
         </View>
@@ -170,14 +202,32 @@ const getStyles = (colors) =>
       margin: 24,
       marginBottom: 8,
       padding: 24,
-      backgroundColor: colors.primary500,
-      borderRadius: 20,
+      borderRadius: 24,
       alignItems: "center",
-      elevation: 4,
-      shadowColor: colors.primary500,
-      shadowRadius: 12,
-      shadowOffset: { width: 0, height: 6 },
+      elevation: 8,
+      shadowColor: "#4F46E5",
+      shadowRadius: 20,
+      shadowOffset: { width: 0, height: 10 },
       shadowOpacity: 0.35,
+      overflow: "hidden",
+    },
+    heroDecor1: {
+      position: "absolute",
+      top: -30,
+      right: -30,
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      backgroundColor: "rgba(255,255,255,0.06)",
+    },
+    heroDecor2: {
+      position: "absolute",
+      bottom: -15,
+      left: -15,
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      backgroundColor: "rgba(255,255,255,0.04)",
     },
     totalLabel: {
       fontSize: 14,
@@ -213,30 +263,46 @@ const getStyles = (colors) =>
       color: "rgba(255,255,255,0.85)",
       fontWeight: "600",
     },
+    rateWarningBtn: {
+      marginTop: 8,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      backgroundColor: "rgba(245,158,11,0.2)",
+      borderWidth: 1,
+      borderColor: "rgba(245,158,11,0.4)",
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+    },
+    rateWarningText: {
+      fontSize: 12,
+      color: "#FCD34D",
+      fontWeight: "600",
+    },
     list: {
       padding: 24,
       paddingTop: 16,
     },
     card: {
       flexDirection: "row",
-      justifyContent: "space-between",
       alignItems: "center",
       backgroundColor: colors.surface,
-      padding: 20,
-      borderRadius: 16,
-      marginBottom: 12,
+      padding: 16,
+      borderRadius: 18,
+      marginBottom: 10,
       borderWidth: 1,
       borderColor: colors.border,
-      elevation: 2,
+      elevation: 1,
       shadowColor: "#000",
       shadowRadius: 6,
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.07,
+      shadowOpacity: 0.04,
     },
     cardLeft: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 16,
+      gap: 14,
       flex: 1,
     },
     cardRight: {
@@ -245,7 +311,7 @@ const getStyles = (colors) =>
     iconContainer: {
       width: 48,
       height: 48,
-      borderRadius: 24,
+      borderRadius: 16,
       backgroundColor: colors.primary100,
       justifyContent: "center",
       alignItems: "center",
@@ -254,34 +320,41 @@ const getStyles = (colors) =>
       backgroundColor: colors.error50,
     },
     accountName: {
-      fontSize: 18,
-      fontWeight: "600",
+      fontSize: 16,
+      fontWeight: "700",
       color: colors.gray800,
+      letterSpacing: -0.2,
     },
     currencyBadge: {
-      marginTop: 2,
+      marginTop: 4,
+      backgroundColor: colors.primary50,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 8,
+      alignSelf: "flex-start",
     },
     currencyBadgeText: {
-      fontSize: 12,
-      fontWeight: "600",
+      fontSize: 11,
+      fontWeight: "700",
       color: colors.primary400,
     },
     currencyBadgeTextUsd: {
       color: colors.error500,
     },
     balance: {
-      fontSize: 20,
-      fontWeight: "700",
+      fontSize: 18,
+      fontWeight: "800",
+      letterSpacing: -0.3,
     },
     egpEquiv: {
-      fontSize: 12,
+      fontSize: 11,
       color: colors.gray500,
       marginTop: 2,
-      fontWeight: "500",
+      fontWeight: "600",
     },
     pressed: {
       opacity: 0.7,
-      transform: [{ scale: 0.98 }],
+      transform: [{ scale: 0.97 }],
     },
     emptyContainer: {
       flex: 1,
@@ -301,10 +374,19 @@ const getStyles = (colors) =>
     },
     settingsSection: {
       marginTop: 8,
-      paddingBottom: 8,
+      paddingBottom: 80,
     },
     settingsSectionEmpty: {
       width: "100%",
       paddingHorizontal: 24,
+    },
+    sectionTitle: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: colors.gray500,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+      marginBottom: 8,
+      marginLeft: 4,
     },
   });

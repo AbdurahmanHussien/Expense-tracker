@@ -1,5 +1,6 @@
 import { useState, useContext } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import ExpensesOutput from "../components/ExpensesOutput/ExpensesOutput";
 import { AppContext } from "../store/app-context";
@@ -7,9 +8,9 @@ import { getDateMinusDays } from "../utils/date";
 import { useTheme } from "../store/theme-context";
 
 const FILTER_KEYS = [
-  { key: "7days", period: "7days", days: 7 },
-  { key: "2weeks", period: "2weeks", days: 14 },
-  { key: "1month", period: "1month", days: 30 },
+  { key: "7days", period: "7days", days: 7, icon: "today-outline" },
+  { key: "2weeks", period: "2weeks", days: 14, icon: "calendar-outline" },
+  { key: "1month", period: "1month", days: 30, icon: "calendar-number-outline" },
 ];
 
 function RecentExpenses() {
@@ -31,28 +32,33 @@ function RecentExpenses() {
   return (
     <View style={styles.container}>
       <View style={styles.filterRow}>
-        {FILTER_KEYS.map((f, index) => (
-          <Pressable
-            key={f.key}
-            onPress={() => setSelectedFilter(index)}
-            style={[
-              styles.filterButton,
-              index === selectedFilter && styles.filterButtonActive,
-            ]}
-          >
-            <Text
-              style={[
-                styles.filterText,
-                index === selectedFilter && styles.filterTextActive,
-              ]}
+        {FILTER_KEYS.map((f, index) => {
+          const active = index === selectedFilter;
+          return (
+            <Pressable
+              key={f.key}
+              onPress={() => setSelectedFilter(index)}
+              style={[styles.filterButton, active && styles.filterButtonActive]}
             >
-              {t(`recent.${f.key}`)}
-            </Text>
-          </Pressable>
-        ))}
+              <Ionicons
+                name={f.icon}
+                size={14}
+                color={active ? "#FFF" : colors.gray500}
+              />
+              <Text
+                style={[
+                  styles.filterText,
+                  active && styles.filterTextActive,
+                ]}
+              >
+                {t(`recent.${f.key}`)}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
       <ExpensesOutput
-        expensesPeriod={t("recent.last", { period: t(`recent.${filter.period}`) })}
+        periodName={t("recent.last", { period: t(`recent.${filter.period}`) })}
         transactions={recentTransactions}
       />
     </View>
@@ -69,27 +75,35 @@ const getStyles = (colors) =>
     },
     filterRow: {
       flexDirection: "row",
-      paddingHorizontal: 24,
-      paddingTop: 16,
-      paddingBottom: 8,
+      paddingHorizontal: 20,
+      paddingTop: 14,
+      paddingBottom: 6,
       gap: 8,
     },
     filterButton: {
       flex: 1,
-      paddingVertical: 10,
-      borderRadius: 12,
-      backgroundColor: colors.surface,
+      flexDirection: "row",
       alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      paddingVertical: 10,
+      borderRadius: 24,
+      backgroundColor: colors.surface,
       borderWidth: 1,
       borderColor: colors.border,
     },
     filterButtonActive: {
       backgroundColor: colors.primary500,
       borderColor: colors.primary500,
+      elevation: 3,
+      shadowColor: colors.primary500,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.3,
     },
     filterText: {
-      fontSize: 14,
-      fontWeight: "600",
+      fontSize: 13,
+      fontWeight: "700",
       color: colors.gray500,
     },
     filterTextActive: {

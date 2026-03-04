@@ -1,104 +1,103 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Palette: "Indigo Finance"
+// Palette: "Indigo Finance" — v2 (comfort-tuned)
 //
-// Light mode uses a cool slate background (Tailwind slate-100) with a
-// deep Indigo primary (#4F46E5) — the same hue used by Linear, Vercel, and
-// many modern fintech apps.  Borders are soft slate-200 instead of harsh grays.
+// Light mode:  Warm off-white background (#FAFAF9 stone-50) instead of cold
+//              blue-tinted slate. Borders are warm gray-200, text is true
+//              neutral gray. Primary stays Indigo for brand recognition but
+//              income/expense colors are warmer and more muted.
 //
-// Dark mode keeps eye-comfort as the priority but adds a subtle indigo tint to
-// surfaces (#1C1B2E / #252441) so it reads as "branded dark" rather than
-// generic charcoal.
+// Dark mode:   Slightly warmer deep tones (#151520 / #1E1E2E) to avoid the
+//              "blue screen" fatigue of cold dark themes. Surfaces have a very
+//              subtle warm-violet tint. Text is warm off-white, never pure #FFF.
 //
-// Income/expense colors are desaturated soft tones (not neon), and the
-// balance number is ALWAYS white — never colored — matching Revolut, N26,
-// Monzo, PayPal, and every other top finance app.
+// Income = warm teal, Expense = warm rose, Transfer = soft lavender.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const lightColors = {
-  // Primary — Indigo (Tailwind indigo-600 / indigo-500)
-  primary50:  "rgba(79,70,229,0.07)",
-  primary100: "rgba(79,70,229,0.12)",
-  primary200: "#4338CA",   // indigo-700 — icons & tinted text
-  primary400: "#4F46E5",   // indigo-600 — active states
-  primary500: "#4F46E5",   // indigo-600 — hero cards / buttons
-  primary700: "#F5F3FF",   // very light violet — form section bg
+  // Primary — Indigo
+  primary50: "rgba(79,70,229,0.06)",
+  primary100: "rgba(79,70,229,0.10)",
+  primary200: "#4338CA",
+  primary400: "#4F46E5",
+  primary500: "#4F46E5",
+  primary700: "#FAFAF9",   // warm off-white — form section bg
   primary800: "#FFFFFF",   // header background
 
-  // Accent
-  accent500:  "#F59E0B",
-  accent600:  "#D97706",
+  // Accent — warm amber
+  accent500: "#F59E0B",
+  accent600: "#D97706",
 
-  // Semantic — income / expense (Tailwind emerald / red, darker for light bg)
-  incomeColor:  "#059669",   // emerald-600
-  incomeBg:     "rgba(5,150,105,0.08)",
-  expenseColor: "#DC2626",   // red-600
-  expenseBg:    "rgba(220,38,38,0.08)",
+  // Semantic — warmer, more muted tones
+  incomeColor: "#0D9488",   // teal-600 — warmer than emerald
+  incomeBg: "rgba(13,148,136,0.08)",
+  expenseColor: "#E11D48",   // rose-600 — warmer than pure red
+  expenseBg: "rgba(225,29,72,0.07)",
 
-  // Error
-  error50:    "rgba(220,38,38,0.08)",
-  error500:   "#DC2626",
+  // Error — rose instead of harsh red
+  error50: "rgba(225,29,72,0.07)",
+  error500: "#E11D48",
 
-  // Neutral — Tailwind Slate (slightly blue-tinted for a "fresh" feel)
-  gray50:     "#F8FAFC",   // slate-50
-  gray100:    "#F1F5F9",   // slate-100 — main background
-  gray500:    "#64748B",   // slate-500 — secondary text
-  gray700:    "#475569",   // slate-600 — body text
-  gray800:    "#0F172A",   // slate-900 — primary text (deep navy-black)
+  // Neutral — warm gray (stone-based, no blue tint)
+  gray50: "#FAFAF9",   // stone-50
+  gray100: "#F5F5F4",   // stone-100 — main background (warm)
+  gray500: "#78716C",   // stone-500 — secondary text
+  gray700: "#57534E",   // stone-600 — body text
+  gray800: "#1C1917",   // stone-900 — primary text
 
   // Functional
-  success500:  "#059669",
-  transfer500: "#7C3AED",   // violet-700
+  success500: "#0D9488",   // teal-600
+  transfer500: "#7C3AED",   // violet-600
 
-  // Surfaces
-  surface:         "#FFFFFF",
+  // Surfaces — clean white with warm border
+  surface: "#FFFFFF",
   surfaceElevated: "#FFFFFF",
-  border:          "#E2E8F0",   // slate-200 — soft border
+  border: "#E7E5E4",   // stone-200 — warm border
 };
 
 const darkColors = {
-  // Primary — Indigo (same hue, brightened for dark backgrounds)
-  primary50:  "rgba(99,102,241,0.1)",
-  primary100: "rgba(99,102,241,0.18)",
-  primary200: "#A5B4FC",   // indigo-300 — icons & tinted text on dark
-  primary400: "#818CF8",   // indigo-400 — active tint
-  primary500: "#6366F1",   // indigo-500 — buttons / hero cards
-  primary700: "#1C1B2E",   // deep indigo surface — form section bg
-  primary800: "#13121F",   // deepest bg — header / nav background
+  // Primary — Indigo (slightly warmer for dark)
+  primary50: "rgba(129,140,248,0.08)",
+  primary100: "rgba(129,140,248,0.15)",
+  primary200: "#A5B4FC",
+  primary400: "#818CF8",
+  primary500: "#6366F1",
+  primary700: "#1A1A2E",   // warm deep indigo — form section bg
+  primary800: "#141422",   // deepest bg — header / nav
 
   // Accent
-  accent500:  "#FBBF24",
-  accent600:  "#F59E0B",
+  accent500: "#FBBF24",
+  accent600: "#F59E0B",
 
-  // Semantic — income / expense (soft tones — NOT neon)
-  incomeColor:  "#34D399",   // emerald-400 — soft sage green
-  incomeBg:     "rgba(52,211,153,0.12)",
-  expenseColor: "#F87171",   // red-400 — soft coral
-  expenseBg:    "rgba(248,113,113,0.12)",
+  // Semantic — soft, warm pastels for dark bg
+  incomeColor: "#2DD4BF",   // teal-400 — warm mint
+  incomeBg: "rgba(45,212,191,0.10)",
+  expenseColor: "#FB7185",   // rose-400 — warm coral
+  expenseBg: "rgba(251,113,133,0.10)",
 
-  // Error
-  error50:    "rgba(248,113,113,0.12)",
-  error500:   "#F87171",
+  // Error — warm rose
+  error50: "rgba(251,113,133,0.10)",
+  error500: "#FB7185",
 
-  // Neutral — Slate on dark (warm enough to avoid blue-screen fatigue)
-  gray50:     "#E2E8F0",   // slate-200
-  gray100:    "#13121F",   // deepest bg — main background
-  gray500:    "#94A3B8",   // slate-400 — muted text
-  gray700:    "#CBD5E1",   // slate-300 — secondary text
-  gray800:    "#F1F5F9",   // slate-100 — primary text (crisp off-white)
+  // Neutral — warm gray for dark (no blue fatigue)
+  gray50: "#D6D3D1",   // stone-300
+  gray100: "#141422",   // main dark background (warm)
+  gray500: "#A8A29E",   // stone-400 — muted text
+  gray700: "#D6D3D1",   // stone-300 — secondary text
+  gray800: "#F5F5F4",   // stone-100 — primary text (warm off-white)
 
   // Functional
-  success500:  "#34D399",
-  transfer500: "#A78BFA",   // violet-400 — soft lavender
+  success500: "#2DD4BF",   // teal-400
+  transfer500: "#A78BFA",   // violet-400
 
-  // Surfaces — deep indigo-tinted dark
-  surface:         "#1C1B2E",   // branded dark card background
-  surfaceElevated: "#252441",   // slightly lighter for modals / elevated cards
-  border:          "#2E2D4A",   // subtle indigo-tinted border
+  // Surfaces — warm deep tones
+  surface: "#1E1E30",   // warm dark card
+  surfaceElevated: "#282842",   // warm elevated (modals)
+  border: "#2E2D45",   // warm subtle border
 };
 
 export const themes = {
   light: { colors: lightColors },
-  dark:  { colors: darkColors },
+  dark: { colors: darkColors },
 };
 
 export const GlobalStyles = { colors: darkColors };

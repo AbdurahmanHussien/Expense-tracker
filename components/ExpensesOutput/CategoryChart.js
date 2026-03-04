@@ -1,32 +1,61 @@
 import { View, Text, StyleSheet } from "react-native";
-import { useContext } from "react";
+import { useContext, useMemo } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "../../store/theme-context";
 import { AppContext } from "../../store/app-context";
+import { convertToEgp } from "../../utils/currency";
 
-export default function CategoryChart({ transactions }) {
+function CategoryChart({ transactions }) {
   const { theme } = useTheme();
   const colors = theme.colors;
-  const { categories } = useContext(AppContext);
+  const { categories, accounts, exchangeRate, budgets, transactions: allTransactions } = useContext(AppContext);
+  const { t } = useTranslation();
   const styles = getStyles(colors);
 
-  // Only expense transactions with a category
-  const expenseTxs = transactions.filter(
-    (tx) => tx.type === "expense" && tx.category_id != null
-  );
+  // Current-month start — for budget comparisons (always monthly, independent of period filter)
+  const startOfMonth = useMemo(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  }, []);
 
-  if (expenseTxs.length === 0 || categories.length === 0) return null;
-
-  // Sum per category
-  const totals = {};
-  expenseTxs.forEach((tx) => {
-    totals[tx.category_id] = (totals[tx.category_id] || 0) + tx.amount;
+  // Spending per category for the selected period (used for the share bar)
+  const expensesByCategory = {};
+  transactions.forEach((tx) => {
+    if (tx.type !== "expense" || !tx.category_id) return;
+    const acc = accounts.find((a) => a.id === tx.account_id);
+    const currency = acc?.currency || "EGP";
+    const amtEgp =
+      currency === "EGP" || !exchangeRate
+        ? tx.amount
+        : convertToEgp(tx.amount, currency, exchangeRate);
+    expensesByCategory[tx.category_id] =
+      (expensesByCategory[tx.category_id] || 0) + amtEgp;
   });
 
-  const totalAll = Object.values(totals).reduce((a, b) => a + b, 0);
+  // Spending per category for the CURRENT MONTH only (used for budget bars)
+  const thisMonthByCategory = useMemo(() => {
+    const map = {};
+    allTransactions.forEach((tx) => {
+      if (tx.type !== "expense" || !tx.category_id) return;
+      if (tx.date < startOfMonth) return;
+      const acc = accounts.find((a) => a.id === tx.account_id);
+      const currency = acc?.currency || "EGP";
+      const amtEgp =
+        currency === "EGP" || !exchangeRate
+          ? tx.amount
+          : convertToEgp(tx.amount, currency, exchangeRate);
+      map[tx.category_id] = (map[tx.category_id] || 0) + amtEgp;
+    });
+    return map;
+  }, [allTransactions, accounts, exchangeRate, startOfMonth]);
 
-  // Sort descending
-  const sorted = Object.entries(totals)
+  const total = Object.values(expensesByCategory).reduce(
+    (sum, val) => sum + val,
+    0
+  );
+
+  const sorted = Object.entries(expensesByCategory)
     .map(([catId, amount]) => {
       const cat = categories.find((c) => c.id === Number(catId));
       return { cat, amount };
@@ -34,43 +63,102 @@ export default function CategoryChart({ transactions }) {
     .filter((item) => item.cat)
     .sort((a, b) => b.amount - a.amount);
 
+  if (sorted.length === 0) return null;
+
   return (
     <View style={styles.card}>
       <View style={styles.header}>
         <Ionicons name="pie-chart" size={18} color={colors.primary400} />
-        <Text style={styles.title}>Spending by Category</Text>
+        <Text style={styles.title}>{t("analytics.spendingByCategory")}</Text>
       </View>
 
       {sorted.map(({ cat, amount }) => {
-        const share = totalAll > 0 ? ((amount / totalAll) * 100).toFixed(0) : "0";
+        const share = total > 0 ? (amount / total) * 100 : 0;
+        const budget = budgets.find((b) => b.category_id === cat.id);
+        const budgetLimit = budget?.monthly_limit;
+        // Always compare budget against current-month spending (not the selected period)
+        const monthlySpent = thisMonthByCategory[cat.id] || 0;
+        const budgetPercent = budgetLimit ? (monthlySpent / budgetLimit) * 100 : null;
+        const isOverBudget = budgetPercent && budgetPercent >= 100;
+        const isNearBudget = budgetPercent && budgetPercent >= 80 && budgetPercent < 100;
+
         return (
           <View key={cat.id} style={styles.row}>
-            <View style={styles.labelRow}>
-              <View style={[styles.iconCircle, { backgroundColor: cat.color + "26" }]}>
-                <Ionicons name={cat.icon} size={14} color={cat.color} />
+            <View style={styles.rowHeader}>
+              <View style={styles.catInfo}>
+                <View style={[styles.iconCircle, { backgroundColor: cat.color + "20" }]}>
+                  <Ionicons name={cat.icon} size={14} color={cat.color} />
+                </View>
+                <Text style={styles.catName} numberOfLines={1}>
+                  {cat.name}
+                </Text>
               </View>
-              <Text style={styles.catName} numberOfLines={1}>
-                {cat.name}
-              </Text>
-              <Text style={styles.share}>{share}%</Text>
+              <View style={styles.amountCol}>
+                <Text style={styles.catAmount}>
+                  {amount.toFixed(0)} EGP
+                </Text>
+                <Text style={styles.catPercent}>{share.toFixed(0)}%</Text>
+              </View>
             </View>
+
+            {/* Spending bar */}
             <View style={styles.barTrack}>
               <View
                 style={[
                   styles.barFill,
-                  { width: `${share}%`, backgroundColor: cat.color },
+                  {
+                    width: `${share}%`,
+                    backgroundColor: cat.color,
+                  },
                 ]}
               />
             </View>
-            <Text style={[styles.amount, { color: cat.color }]}>
-              {amount.toFixed(2)} EGP
-            </Text>
+
+            {/* Budget progress */}
+            {budgetLimit && (
+              <View style={styles.budgetRow}>
+                <View style={styles.budgetBarTrack}>
+                  <View
+                    style={[
+                      styles.budgetBarFill,
+                      {
+                        width: `${Math.min(budgetPercent, 100)}%`,
+                        backgroundColor: isOverBudget
+                          ? colors.error500
+                          : isNearBudget
+                            ? colors.accent500
+                            : colors.incomeColor,
+                      },
+                    ]}
+                  />
+                </View>
+                <View style={styles.budgetInfo}>
+                  {isOverBudget && (
+                    <Ionicons name="warning" size={11} color={colors.error500} />
+                  )}
+                  {isNearBudget && (
+                    <Ionicons name="alert-circle" size={11} color={colors.accent500} />
+                  )}
+                  <Text
+                    style={[
+                      styles.budgetText,
+                      isOverBudget && { color: colors.error500 },
+                      isNearBudget && { color: colors.accent500 },
+                    ]}
+                  >
+                    {monthlySpent.toFixed(0)} / {budgetLimit.toFixed(0)} EGP
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
         );
       })}
     </View>
   );
 }
+
+export default CategoryChart;
 
 const getStyles = (colors) =>
   StyleSheet.create({
@@ -81,11 +169,6 @@ const getStyles = (colors) =>
       marginBottom: 16,
       borderWidth: 1,
       borderColor: colors.border,
-      elevation: 3,
-      shadowColor: "#000",
-      shadowRadius: 6,
-      shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.15,
     },
     header: {
       flexDirection: "row",
@@ -99,49 +182,78 @@ const getStyles = (colors) =>
       color: colors.gray800,
     },
     row: {
-      marginBottom: 12,
+      marginBottom: 14,
     },
-    labelRow: {
+    rowHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 6,
+    },
+    catInfo: {
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
-      marginBottom: 6,
+      flex: 1,
     },
     iconCircle: {
-      width: 26,
-      height: 26,
-      borderRadius: 13,
-      justifyContent: "center",
+      width: 28,
+      height: 28,
+      borderRadius: 14,
       alignItems: "center",
+      justifyContent: "center",
     },
     catName: {
-      flex: 1,
       fontSize: 13,
       fontWeight: "600",
       color: colors.gray800,
+      flex: 1,
     },
-    share: {
-      fontSize: 12,
+    amountCol: {
+      alignItems: "flex-end",
+    },
+    catAmount: {
+      fontSize: 13,
       fontWeight: "700",
+      color: colors.gray800,
+    },
+    catPercent: {
+      fontSize: 10,
+      fontWeight: "600",
       color: colors.gray500,
-      minWidth: 32,
-      textAlign: "right",
     },
     barTrack: {
-      height: 8,
-      width: "100%",
-      backgroundColor: colors.border,
-      borderRadius: 4,
+      height: 6,
+      backgroundColor: colors.primary50,
+      borderRadius: 3,
       overflow: "hidden",
-      marginBottom: 4,
     },
     barFill: {
-      height: 8,
-      borderRadius: 4,
+      height: 6,
+      borderRadius: 3,
     },
-    amount: {
-      fontSize: 12,
-      fontWeight: "700",
-      textAlign: "right",
+    budgetRow: {
+      marginTop: 5,
+    },
+    budgetBarTrack: {
+      height: 4,
+      backgroundColor: colors.primary50,
+      borderRadius: 2,
+      overflow: "hidden",
+    },
+    budgetBarFill: {
+      height: 4,
+      borderRadius: 2,
+    },
+    budgetInfo: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      marginTop: 3,
+    },
+    budgetText: {
+      fontSize: 10,
+      fontWeight: "600",
+      color: colors.gray500,
     },
   });

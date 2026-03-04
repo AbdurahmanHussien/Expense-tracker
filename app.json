@@ -2,7 +2,7 @@
   "expo": {
     "name": "Spend Wise",
     "slug": "SpendWise",
-    "version": "1.0.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -29,7 +29,21 @@
     },
     "plugins": [
       "@react-native-community/datetimepicker",
-      ["expo-build-properties", { "android": { "minSdkVersion": 24 } }]
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 24
+          }
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#6366f1"
+        }
+      ]
     ],
     "extra": {
       "eas": {

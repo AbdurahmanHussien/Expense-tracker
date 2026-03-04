@@ -9,45 +9,67 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../store/theme-context";
 import { AppContext } from "../store/app-context";
 import { getDateMinusDays } from "../utils/date";
+import { convertToEgp } from "../utils/currency";
 import CategoryChart from "../components/ExpensesOutput/CategoryChart";
+import InsightsCard from "../components/ExpensesOutput/InsightsCard";
+import HealthScoreCard from "../components/ExpensesOutput/HealthScoreCard";
 
 export default function Analytics() {
-  const [selectedPeriod, setSelectedPeriod] = useState(2);
-  const { transactions, accounts, getAccountBalance } = useContext(AppContext);
-  const { theme } = useTheme();
+  const [selectedPeriod, setSelectedPeriod] = useState(0);
+  const { transactions, accounts, categories, budgets, goals, getAccountBalance, exchangeRate } = useContext(AppContext);
+  const { theme, isDark } = useTheme();
   const colors = theme.colors;
   const navigation = useNavigation();
   const styles = getStyles(colors);
   const { t } = useTranslation();
 
+  const gradientColors = isDark
+    ? ["#4338CA", "#6366F1", "#7C3AED"]
+    : ["#4F46E5", "#6366F1", "#8B5CF6"];
+
   const PERIODS = [
     { labelKey: "period7d", days: 7 },
     { labelKey: "period2w", days: 14 },
-    { labelKey: "period1m", days: 30 },
-    { labelKey: "period3m", days: 90 },
-    { labelKey: "periodAll", days: null },
+    { labelKey: "periodThisMonth", days: "thisMonth" },
   ];
 
   const period = PERIODS[selectedPeriod];
+
+  const getStartOfMonth = () => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  };
+
   const filtered =
     period.days === null
       ? transactions
-      : transactions.filter(
+      : period.days === "thisMonth"
+        ? transactions.filter((tx) => tx.date >= getStartOfMonth())
+        : transactions.filter(
           (tx) => tx.date > getDateMinusDays(new Date(), period.days)
         );
 
   const totalBalance = accounts.reduce(
-    (sum, acc) => sum + getAccountBalance(acc.id),
+    (sum, acc) => sum + convertToEgp(getAccountBalance(acc.id), acc.currency || "EGP", exchangeRate),
     0
   );
   const balancePositive = totalBalance >= 0;
 
-  const income   = filtered.filter((tx) => tx.type === "income" ).reduce((s, tx) => s + tx.amount, 0);
-  const expenses = filtered.filter((tx) => tx.type === "expense").reduce((s, tx) => s + tx.amount, 0);
-  const net      = income - expenses;
+  // Build a lookup so we can resolve each transaction's account currency
+  const accountCurrencyMap = {};
+  accounts.forEach((acc) => { accountCurrencyMap[acc.id] = acc.currency || "EGP"; });
+
+  const income = filtered
+    .filter((tx) => tx.type === "income")
+    .reduce((s, tx) => s + convertToEgp(tx.amount, accountCurrencyMap[tx.account_id] || "EGP", exchangeRate), 0);
+  const expenses = filtered
+    .filter((tx) => tx.type === "expense")
+    .reduce((s, tx) => s + convertToEgp(tx.amount, accountCurrencyMap[tx.account_id] || "EGP", exchangeRate), 0);
+  const net = income - expenses;
   const netPositive = net >= 0;
 
   const hasExpenses = filtered.some(
@@ -55,9 +77,10 @@ export default function Analytics() {
   );
 
   const periodLabel = t(`analytics.${period.labelKey}`);
-  const noExpensesSuffix = period.days
-    ? t("analytics.noExpensesSuffix", { label: periodLabel })
-    : t("analytics.noExpensesYet");
+  const noExpensesSuffix =
+    typeof period.days === "number"
+      ? t("analytics.noExpensesSuffix", { label: periodLabel })
+      : t("analytics.noExpensesYet");
 
   return (
     <ScrollView
@@ -66,7 +89,14 @@ export default function Analytics() {
       showsVerticalScrollIndicator={false}
     >
       {/* ── Balance Hero ── */}
-      <View style={styles.heroCard}>
+      <LinearGradient
+        colors={gradientColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.heroCard}
+      >
+        <View style={styles.heroDecor1} />
+        <View style={styles.heroDecor2} />
         <Text style={styles.heroLabel}>{t("analytics.totalBalance")}</Text>
         <View style={styles.heroAmountRow}>
           <Text style={styles.heroAmount}>{totalBalance.toFixed(2)} EGP</Text>
@@ -90,7 +120,7 @@ export default function Analytics() {
             {t(accounts.length === 1 ? "analytics.accounts_one" : "analytics.accounts_other", { count: accounts.length })}
           </Text>
         </View>
-      </View>
+      </LinearGradient>
 
       {/* ── Period Selector ── */}
       <View style={styles.periodRow}>
@@ -106,6 +136,15 @@ export default function Analytics() {
           </Pressable>
         ))}
       </View>
+
+      {/* ── Health Score Card ── */}
+      <HealthScoreCard
+        transactions={transactions}
+        budgets={budgets}
+        goals={goals}
+        accounts={accounts}
+        exchangeRate={exchangeRate}
+      />
 
       {/* ── Quick Stats ── */}
       <View style={styles.statsRow}>
@@ -135,6 +174,14 @@ export default function Analytics() {
         />
       </View>
 
+      {/* ── Spending Insights ── */}
+      <InsightsCard
+        transactions={transactions}
+        categories={categories}
+        budgets={budgets}
+        accounts={accounts}
+      />
+
       {/* ── Category Chart ── */}
       {hasExpenses ? (
         <CategoryChart transactions={filtered} />
@@ -161,6 +208,56 @@ export default function Analytics() {
         <Text style={styles.manageBtnText}>{t("analytics.manageCategories")}</Text>
         <Ionicons name="chevron-forward" size={16} color={colors.gray500} />
       </Pressable>
+
+      {/* ── Monthly Report ── */}
+      <Pressable
+        style={({ pressed }) => [styles.manageBtn, pressed && styles.manageBtnPressed]}
+        onPress={() => navigation.navigate("MonthlyReport")}
+      >
+        <View style={[styles.manageBtnIcon, { backgroundColor: colors.accent500 + "18" }]}>
+          <Ionicons name="calendar-outline" size={18} color={colors.accent500} />
+        </View>
+        <Text style={styles.manageBtnText}>{t("monthly.title")}</Text>
+        <Ionicons name="chevron-forward" size={16} color={colors.gray500} />
+      </Pressable>
+
+      {/* ── Savings Goals ── */}
+      <Pressable
+        style={({ pressed }) => [styles.manageBtn, pressed && styles.manageBtnPressed]}
+        onPress={() => navigation.navigate("SavingsGoals")}
+      >
+        <View style={[styles.manageBtnIcon, { backgroundColor: colors.incomeColor + "18" }]}>
+          <Ionicons name="ribbon-outline" size={18} color={colors.incomeColor} />
+        </View>
+        <Text style={styles.manageBtnText}>{t("goals.title")}</Text>
+        <Ionicons name="chevron-forward" size={16} color={colors.gray500} />
+      </Pressable>
+
+      {/* ── Recurring Transactions ── */}
+      <Pressable
+        style={({ pressed }) => [styles.manageBtn, pressed && styles.manageBtnPressed]}
+        onPress={() => navigation.navigate("RecurringTransactions")}
+      >
+        <View style={[styles.manageBtnIcon, { backgroundColor: colors.primary400 + "18" }]}>
+          <Ionicons name="repeat-outline" size={18} color={colors.primary400} />
+        </View>
+        <Text style={styles.manageBtnText}>{t("recurring.title")}</Text>
+        <Ionicons name="chevron-forward" size={16} color={colors.gray500} />
+      </Pressable>
+
+      {/* ── Bill Reminders ── */}
+      <Pressable
+        style={({ pressed }) => [styles.manageBtn, pressed && styles.manageBtnPressed]}
+        onPress={() => navigation.navigate("BillReminders")}
+      >
+        <View style={[styles.manageBtnIcon, { backgroundColor: colors.expenseColor + "18" }]}>
+          <Ionicons name="receipt-outline" size={18} color={colors.expenseColor} />
+        </View>
+        <Text style={styles.manageBtnText}>{t("bills.title")}</Text>
+        <Ionicons name="chevron-forward" size={16} color={colors.gray500} />
+      </Pressable>
+
+      <View style={{ height: 90 }} />
     </ScrollView>
   );
 }
@@ -168,9 +265,10 @@ export default function Analytics() {
 function StatCard({ label, value, color, bg, icon, colors }) {
   const styles = getStatStyles(colors);
   return (
-    <View style={[styles.card, { borderTopColor: color }]}>
+    <View style={styles.card}>
+      <View style={[styles.topAccent, { backgroundColor: color }]} />
       <View style={[styles.iconWrap, { backgroundColor: bg }]}>
-        <Ionicons name={icon} size={15} color={color} />
+        <Ionicons name={icon} size={16} color={color} />
       </View>
       <Text style={styles.label}>{label}</Text>
       <Text style={[styles.value, { color }]}>{value}</Text>
@@ -184,24 +282,34 @@ const getStatStyles = (colors) =>
     card: {
       flex: 1,
       backgroundColor: colors.surface,
-      borderRadius: 14,
+      borderRadius: 18,
       padding: 14,
-      borderTopWidth: 2,
       borderWidth: 1,
       borderColor: colors.border,
-      elevation: 1,
+      overflow: "hidden",
+      elevation: 2,
       shadowColor: "#000",
-      shadowRadius: 3,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.06,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+    },
+    topAccent: {
+      position: "absolute",
+      top: 0,
+      left: 16,
+      right: 16,
+      height: 3,
+      borderBottomLeftRadius: 3,
+      borderBottomRightRadius: 3,
     },
     iconWrap: {
-      width: 28,
-      height: 28,
-      borderRadius: 8,
+      width: 32,
+      height: 32,
+      borderRadius: 10,
       justifyContent: "center",
       alignItems: "center",
-      marginBottom: 8,
+      marginBottom: 10,
+      marginTop: 4,
     },
     label: {
       fontSize: 10,
@@ -237,13 +345,32 @@ const getStyles = (colors) =>
     },
     heroCard: {
       backgroundColor: colors.primary500,
-      borderRadius: 20,
+      borderRadius: 24,
       padding: 24,
-      elevation: 6,
-      shadowColor: colors.primary500,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.4,
+      elevation: 8,
+      shadowColor: "#4F46E5",
+      shadowRadius: 20,
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.35,
+      overflow: "hidden",
+    },
+    heroDecor1: {
+      position: "absolute",
+      top: -30,
+      right: -30,
+      width: 120,
+      height: 120,
+      borderRadius: 60,
+      backgroundColor: "rgba(255,255,255,0.06)",
+    },
+    heroDecor2: {
+      position: "absolute",
+      bottom: -20,
+      left: -20,
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: "rgba(255,255,255,0.04)",
     },
     heroLabel: {
       fontSize: 11,
@@ -291,7 +418,7 @@ const getStyles = (colors) =>
     periodRow: {
       flexDirection: "row",
       backgroundColor: colors.surface,
-      borderRadius: 14,
+      borderRadius: 18,
       padding: 4,
       gap: 3,
       borderWidth: 1,
@@ -299,12 +426,17 @@ const getStyles = (colors) =>
     },
     periodBtn: {
       flex: 1,
-      paddingVertical: 9,
+      paddingVertical: 10,
       alignItems: "center",
-      borderRadius: 10,
+      borderRadius: 14,
     },
     periodBtnActive: {
       backgroundColor: colors.primary500,
+      elevation: 3,
+      shadowColor: colors.primary500,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
     },
     periodBtnText: {
       fontSize: 12,
@@ -320,16 +452,16 @@ const getStyles = (colors) =>
     },
     emptyChart: {
       backgroundColor: colors.surface,
-      borderRadius: 16,
-      padding: 28,
+      borderRadius: 20,
+      padding: 32,
       alignItems: "center",
-      gap: 8,
+      gap: 10,
       borderWidth: 1,
       borderColor: colors.border,
     },
     emptyChartText: {
-      fontSize: 14,
-      fontWeight: "600",
+      fontSize: 15,
+      fontWeight: "700",
       color: colors.gray700,
       textAlign: "center",
     },
@@ -344,18 +476,24 @@ const getStyles = (colors) =>
       alignItems: "center",
       gap: 12,
       backgroundColor: colors.surface,
-      borderRadius: 14,
+      borderRadius: 18,
       padding: 16,
       borderWidth: 1,
       borderColor: colors.border,
+      elevation: 1,
+      shadowColor: "#000",
+      shadowRadius: 4,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.04,
     },
     manageBtnPressed: {
       opacity: 0.7,
+      transform: [{ scale: 0.98 }],
     },
     manageBtnIcon: {
-      width: 34,
-      height: 34,
-      borderRadius: 10,
+      width: 38,
+      height: 38,
+      borderRadius: 12,
       backgroundColor: colors.primary100,
       justifyContent: "center",
       alignItems: "center",
@@ -363,7 +501,7 @@ const getStyles = (colors) =>
     manageBtnText: {
       flex: 1,
       fontSize: 14,
-      fontWeight: "600",
+      fontWeight: "700",
       color: colors.gray800,
     },
   });

@@ -1,11 +1,13 @@
 import { useLayoutEffect, useContext, useState } from "react";
 import { View, Text, StyleSheet, Alert, ScrollView, Pressable } from "react-native";
 import { useTranslation } from "react-i18next";
+import * as Haptics from "expo-haptics";
 import Input from "../components/ManageExpense/Input";
 import Button from "../components/UI/Button";
 import IconButton from "../components/UI/IconButton";
 import { useTheme } from "../store/theme-context";
 import { AppContext } from "../store/app-context";
+import { Ionicons } from "@expo/vector-icons";
 import {
   insertAccount,
   updateAccount as updateAccountDB,
@@ -95,6 +97,7 @@ function ManageAccount({ route, navigation }) {
         const id = await insertAccount(name, balance, currency);
         appCtx.addAccount({ id, name, initial_balance: balance, currency });
       }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.goBack();
     } catch (err) {
       setError(err.message || t("accounts.failedSave"));
@@ -126,6 +129,7 @@ function ManageAccount({ route, navigation }) {
             try {
               await deleteAccountDB(editedAccountId);
               appCtx.deleteAccount(editedAccountId);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
               navigation.goBack();
             } catch (err) {
               setError(err.message || t("accounts.failedDelete"));
@@ -222,12 +226,22 @@ function ManageAccount({ route, navigation }) {
 
       {isEditing && (
         <View style={styles.deleteContainer}>
-          <IconButton
-            icon="trash"
-            size={36}
-            color={colors.error500}
+          <View style={styles.dangerLabel}>
+            <Ionicons name="warning" size={14} color={colors.error500} />
+            <Text style={styles.dangerLabelText}>{t("accounts.dangerZone")}</Text>
+          </View>
+          <Pressable
+            style={({ pressed }) => [
+              styles.deleteButton,
+              pressed && styles.deleteButtonPressed,
+            ]}
             onPress={deleteHandler}
-          />
+          >
+            <View style={styles.deleteIconWrap}>
+              <Ionicons name="trash-outline" size={16} color="#FFF" />
+            </View>
+            <Text style={styles.deleteButtonText}>{t("accounts.deleteAccount")}</Text>
+          </Pressable>
         </View>
       )}
     </ScrollView>
@@ -272,15 +286,20 @@ const getStyles = (colors) =>
     currencyButton: {
       flex: 1,
       paddingVertical: 14,
-      borderRadius: 14,
+      borderRadius: 20,
       backgroundColor: colors.surface,
-      borderWidth: 1.5,
+      borderWidth: 1,
       borderColor: colors.border,
       alignItems: "center",
     },
     currencyButtonActive: {
-      backgroundColor: colors.primary100,
-      borderColor: colors.primary400,
+      backgroundColor: colors.primary500,
+      borderColor: colors.primary500,
+      elevation: 2,
+      shadowColor: colors.primary500,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
     },
     currencyButtonText: {
       fontSize: 15,
@@ -288,8 +307,8 @@ const getStyles = (colors) =>
       color: colors.gray500,
     },
     currencyButtonTextActive: {
-      color: colors.primary500,
-      fontWeight: "700",
+      color: "#FFF",
+      fontWeight: "800",
     },
     buttons: {
       flexDirection: "row",
@@ -304,10 +323,52 @@ const getStyles = (colors) =>
     },
     deleteContainer: {
       marginTop: 32,
-      paddingTop: 24,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
+      backgroundColor: colors.error50,
+      borderRadius: 20,
+      padding: 18,
+      borderWidth: 1,
+      borderColor: colors.error500 + "30",
+    },
+    dangerLabel: {
+      flexDirection: "row",
       alignItems: "center",
+      gap: 6,
+      marginBottom: 14,
+    },
+    dangerLabelText: {
+      fontSize: 10,
+      fontWeight: "800",
+      color: colors.error500,
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
+    },
+    deleteButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
+      backgroundColor: colors.error500,
+      borderRadius: 14,
+      paddingVertical: 14,
+      paddingHorizontal: 20,
+    },
+    deleteButtonPressed: {
+      opacity: 0.85,
+      transform: [{ scale: 0.98 }],
+    },
+    deleteIconWrap: {
+      width: 28,
+      height: 28,
+      borderRadius: 9,
+      backgroundColor: "rgba(255,255,255,0.2)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    deleteButtonText: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: "#FFF",
+      letterSpacing: 0.2,
     },
     errorText: {
       color: colors.error500,
@@ -320,7 +381,7 @@ const getStyles = (colors) =>
       marginVertical: 4,
       padding: 12,
       backgroundColor: colors.error50,
-      borderRadius: 12,
+      borderRadius: 14,
       borderLeftWidth: 4,
       borderLeftColor: colors.error500,
     },

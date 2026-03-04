@@ -2,12 +2,13 @@ import { View, Text, StyleSheet } from "react-native";
 import { useContext } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../store/theme-context";
 import { AppContext } from "../../store/app-context";
 import { convertToEgp } from "../../utils/currency";
 
 function ExpensesSummary({ transactions, periodName }) {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const colors = theme.colors;
   const styles = getStyles(colors);
   const { t } = useTranslation();
@@ -39,8 +40,21 @@ function ExpensesSummary({ transactions, periodName }) {
   const net = income - expenses;
   const netPositive = net >= 0;
 
+  const gradientColors = isDark
+    ? ["#4338CA", "#6366F1", "#7C3AED"]
+    : ["#4F46E5", "#6366F1", "#8B5CF6"];
+
   return (
-    <View style={styles.container}>
+    <LinearGradient
+      colors={gradientColors}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.container}
+    >
+      {/* Decorative circles */}
+      <View style={styles.decorCircle1} />
+      <View style={styles.decorCircle2} />
+
       {/* ── Total Balance ── */}
       <Text style={styles.balanceLabel}>{t("summary.totalBalance")}</Text>
       <View style={styles.balanceRow}>
@@ -103,7 +117,7 @@ function ExpensesSummary({ transactions, periodName }) {
           </View>
         </View>
       </View>
-    </View>
+    </LinearGradient>
   );
 }
 
@@ -113,14 +127,32 @@ const getStyles = (colors) =>
   StyleSheet.create({
     container: {
       padding: 22,
-      backgroundColor: colors.primary500,
-      borderRadius: 20,
+      borderRadius: 24,
       marginBottom: 16,
-      elevation: 6,
-      shadowColor: colors.primary500,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.4,
+      elevation: 8,
+      shadowColor: "#4F46E5",
+      shadowRadius: 20,
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.35,
+      overflow: "hidden",
+    },
+    decorCircle1: {
+      position: "absolute",
+      top: -30,
+      right: -30,
+      width: 120,
+      height: 120,
+      borderRadius: 60,
+      backgroundColor: "rgba(255,255,255,0.06)",
+    },
+    decorCircle2: {
+      position: "absolute",
+      bottom: -20,
+      left: -20,
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: "rgba(255,255,255,0.04)",
     },
     balanceLabel: {
       fontSize: 11,

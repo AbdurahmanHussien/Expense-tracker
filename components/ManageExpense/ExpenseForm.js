@@ -418,7 +418,13 @@ function TransactionForm({
         <Button style={styles.submitButton} onPress={submitHandler}>
           {submitButtonLabel}
         </Button>
-        <Pressable onPress={onCancel} style={styles.cancelButton}>
+        <Pressable
+          onPress={onCancel}
+          style={({ pressed }) => [
+            styles.cancelButton,
+            pressed && styles.cancelButtonPressed,
+          ]}
+        >
           <Text style={styles.cancelText}>{t("common.cancel")}</Text>
         </Pressable>
       </View>
@@ -529,10 +535,10 @@ const getStyles = (colors) =>
     /* ── Type Selector ── */
     typeSelector: {
       flexDirection: "row",
-      gap: 8,
+      gap: 6,
       padding: 4,
       backgroundColor: colors.surface,
-      borderRadius: 16,
+      borderRadius: 20,
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -543,14 +549,14 @@ const getStyles = (colors) =>
       justifyContent: "center",
       gap: 6,
       paddingVertical: 12,
-      borderRadius: 12,
+      borderRadius: 16,
       backgroundColor: "transparent",
       borderWidth: 1.5,
       borderColor: "transparent",
     },
     typeButtonText: {
       fontSize: 13,
-      fontWeight: "600",
+      fontWeight: "700",
       color: colors.gray500,
     },
     typeButtonTextActive: {
@@ -561,11 +567,16 @@ const getStyles = (colors) =>
     /* ── Amount Card ── */
     amountCard: {
       backgroundColor: colors.surface,
-      borderRadius: 20,
-      padding: 20,
+      borderRadius: 24,
+      padding: 22,
       alignItems: "center",
       borderWidth: 1,
       borderColor: colors.border,
+      elevation: 2,
+      shadowColor: "#000",
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.04,
     },
     amountLabel: {
       fontSize: 12,
@@ -590,14 +601,15 @@ const getStyles = (colors) =>
       marginHorizontal: 0,
     },
     amountInputField: {
-      fontSize: 36,
-      fontWeight: "700",
+      fontSize: 38,
+      fontWeight: "800",
       textAlign: "center",
       padding: 8,
       borderWidth: 0,
       backgroundColor: "transparent",
       color: colors.gray800,
-      minWidth: 120,
+      minWidth: 130,
+      letterSpacing: -0.5,
     },
 
     /* ── Currency Conversion Card ── */
@@ -698,10 +710,15 @@ const getStyles = (colors) =>
     /* ── Section Card ── */
     sectionCard: {
       backgroundColor: colors.surface,
-      borderRadius: 20,
+      borderRadius: 22,
       padding: 16,
       borderWidth: 1,
       borderColor: colors.border,
+      elevation: 1,
+      shadowColor: "#000",
+      shadowRadius: 4,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.03,
     },
     sectionTitle: {
       fontSize: 13,
@@ -749,18 +766,25 @@ const getStyles = (colors) =>
     /* ── Action Buttons ── */
     buttons: {
       marginTop: 8,
-      gap: 12,
+      gap: 10,
     },
     submitButton: {
       width: "100%",
     },
     cancelButton: {
       alignItems: "center",
-      paddingVertical: 12,
+      paddingVertical: 14,
+      borderRadius: 16,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    cancelButtonPressed: {
+      opacity: 0.7,
     },
     cancelText: {
       color: colors.gray500,
       fontSize: 15,
-      fontWeight: "600",
+      fontWeight: "700",
     },
   });

@@ -1,29 +1,45 @@
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import { View, Text, ScrollView, StyleSheet } from "react-native";
+import { useContext, useMemo } from "react";
+import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { useTheme } from "../../store/theme-context";
+import { AppContext } from "../../store/app-context";
 import ExpensesSummary from "./ExpensesSummary";
 import ExpensesList from "./ExpensesList";
-import { useTheme } from "../../store/theme-context";
 
-function ExpensesOutput({ transactions, expensesPeriod }) {
+function ExpensesOutput({ transactions, periodName, fallbackText }) {
   const { theme } = useTheme();
   const colors = theme.colors;
-  const styles = getStyles(colors);
   const { t } = useTranslation();
+  const styles = getStyles(colors);
+
+  const sorted = useMemo(
+    () => [...transactions].sort((a, b) => b.date - a.date),
+    [transactions]
+  );
 
   return (
     <ScrollView
-      style={styles.scrollView}
-      contentContainerStyle={styles.container}
-      showsVerticalScrollIndicator={false}
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+      keyboardShouldPersistTaps="handled"
     >
-      <ExpensesSummary periodName={expensesPeriod} transactions={transactions} />
-      {transactions.length > 0 ? (
-        <ExpensesList transactions={transactions} />
+      <ExpensesSummary transactions={sorted} periodName={periodName} />
+
+      {sorted.length > 0 ? (
+        <ExpensesList transactions={sorted} />
       ) : (
         <View style={styles.emptyContainer}>
-          <Text style={styles.infoText}>{t("summary.noTransactions")}</Text>
+          <View style={styles.emptyIconWrapper}>
+            <Ionicons name="receipt-outline" size={48} color={colors.gray500} />
+          </View>
+          <Text style={styles.emptyTitle}>{t("summary.noTransactions")}</Text>
+          <Text style={styles.emptyHint}>{t("summary.noTransactionsHint")}</Text>
         </View>
       )}
+
+      {/* Bottom spacer for floating tab bar */}
+      <View style={{ height: 90 }} />
     </ScrollView>
   );
 }
@@ -32,22 +48,39 @@ export default ExpensesOutput;
 
 const getStyles = (colors) =>
   StyleSheet.create({
-    scrollView: {
+    container: {
       flex: 1,
       backgroundColor: colors.gray100,
     },
-    container: {
-      padding: 20,
-      paddingBottom: 32,
+    contentContainer: {
+      padding: 16,
     },
     emptyContainer: {
       alignItems: "center",
-      marginTop: 64,
+      justifyContent: "center",
+      paddingVertical: 60,
+      paddingHorizontal: 24,
     },
-    infoText: {
-      color: colors.gray500,
-      fontSize: 16,
+    emptyIconWrapper: {
+      width: 88,
+      height: 88,
+      borderRadius: 44,
+      backgroundColor: colors.primary50,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 20,
+    },
+    emptyTitle: {
+      fontSize: 17,
+      fontWeight: "700",
+      color: colors.gray700,
+      marginBottom: 6,
       textAlign: "center",
-      fontWeight: "500",
+    },
+    emptyHint: {
+      fontSize: 13,
+      color: colors.gray500,
+      textAlign: "center",
+      lineHeight: 20,
     },
   });
